@@ -8,10 +8,15 @@ up the full tool surface.
 
 from __future__ import annotations
 
+from importlib.metadata import version
 from pathlib import Path
 
 from fastmcp import FastMCP
 
 _INSTRUCTIONS = (Path(__file__).parent / "instructions.md").read_text(encoding="utf-8")
 
-mcp: FastMCP = FastMCP("cortex", instructions=_INSTRUCTIONS)
+mcp: FastMCP = FastMCP(
+    "cortex",
+    instructions=_INSTRUCTIONS,
+    version=version("alpha-server"),
+)
