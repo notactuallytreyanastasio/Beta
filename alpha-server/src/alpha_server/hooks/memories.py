@@ -121,18 +121,14 @@ async def _run(prompt: str, session_id: str, request: Request) -> str:
     if not queries:
         return ""
 
-    # 2. Embed each query, in parallel.
+    # 2. Embed all queries in one batched request.
     task = "Given a search query, retrieve relevant passages that are similar to the query"
-
-    async def embed(q: str) -> np.ndarray:
-        resp = await embedding_client.embeddings.create(
-            model=embedding_model,
-            input=f"Instruct: {task}\nQuery:{q}",
-            timeout=15.0,
-        )
-        return np.asarray(resp.data[0].embedding, dtype=np.float32)
-
-    embeddings = await asyncio.gather(*(embed(q) for q in queries))
+    embedding_response = await embedding_client.embeddings.create(
+        model=embedding_model,
+        input=[f"Instruct: {task}\nQuery:{q}" for q in queries],
+        timeout=15.0,
+    )
+    embeddings = [np.asarray(d.embedding, dtype=np.float32) for d in embedding_response.data]
 
     # 3. Pull the seen-set for this session from Redis.
     seen_key = f"seen:{session_id}"
