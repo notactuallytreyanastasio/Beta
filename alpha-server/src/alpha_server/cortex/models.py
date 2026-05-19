@@ -48,3 +48,10 @@ class SearchMemoriesResult(BaseModel):
     mode: str = Field(description="The mode that produced these hits ('semantic' or 'index').")
     query: str = Field(description="The search text that produced these hits.")
     hits: list[SearchHit] = Field(description="Matching memories, ordered by descending score.")
+
+
+class StoreResult(BaseModel):
+    """The result of storing a memory."""
+
+    id: int = Field(description="The id of the newly-stored memory.")
+    created_at: str = Field(description="When the memory was stored (PSO-8601, local time).")
