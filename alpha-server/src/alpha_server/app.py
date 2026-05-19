@@ -18,6 +18,7 @@ from alpha_server.cortex import mcp
 # Side-effect imports register handlers against the shared hooks router.
 from alpha_server.hooks import (
     memories,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    reflection,  # noqa: F401  # pyright: ignore[reportUnusedImport]
     timestamp,  # noqa: F401  # pyright: ignore[reportUnusedImport]
 )
 from alpha_server.hooks import router as hooks_router
