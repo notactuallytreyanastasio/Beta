@@ -81,7 +81,4 @@ Two patterns, both process-singleton, both shared by hooks and MCP tools:
 
 ## Conventions
 
-- Python 3.12+, `from __future__ import annotations` at the top of every module.
-- Ruff strict rule set (`E,W,F,I,B,UP,S,SIM,RUF,D`) with Google docstring convention. Tests are exempt from `S101` and `D10x`. `__init__.py` is exempt from `D104`; `__main__.py` from `D100`.
-- basedpyright is configured for `recommended` typecheckingMode with `reportExplicitAny` and `reportAny` disabled (deliberate — `Any` is honest at JSON boundaries we control).
-- No `print()` for observability; the server is meant to run under uvicorn and write JSON to stdout in production.
+- Commit `uv.lock`. We're an application, not a library; reproducibility across machines and deploys wins.
