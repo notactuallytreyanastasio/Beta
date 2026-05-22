@@ -19,3 +19,12 @@ scratch/
 
 # per-checkout Docker Compose override (see compose.override.yml.example)
 compose.override.yml
+
+# Deciduous database (local)
+.deciduous/
+
+# Harness runtime artifacts (PID file, server logs)
+harness/alpha-server.pid
+harness/alpha-server.log
+harness/embed-server.pid
+harness/embed-server.log

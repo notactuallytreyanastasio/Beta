@@ -45,9 +45,10 @@ if (( COLOR )); then
     C_EMBED=$'\033[36m'      # cyan
     C_PG=$'\033[34m'         # blue
     C_REDIS=$'\033[35m'      # magenta
+    C_CLASSIFY=$'\033[33m'   # yellow
     C_RESET=$'\033[0m'
 else
-    C_ALPHA=''; C_EMBED=''; C_PG=''; C_REDIS=''; C_RESET=''
+    C_ALPHA=''; C_EMBED=''; C_PG=''; C_REDIS=''; C_CLASSIFY=''; C_RESET=''
 fi
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -102,6 +103,15 @@ if docker compose -f "$REPO_ROOT/compose-dev.yml" ps --status running redis \
     pids+=($!)
 else
     echo "${C_REDIS}[redis]${C_RESET}    container not running (just alpha-up to start it)"
+fi
+
+# Archive classifier (Elixir/Phoenix + Whisper)
+classify_log="$REPO_ROOT/../archive_classifier/logs/server.log"
+if [[ -f "$classify_log" ]]; then
+    tail -n "$LINES" -f "$classify_log" | prefix "classify" "$C_CLASSIFY" &
+    pids+=($!)
+else
+    echo "${C_CLASSIFY}[classify]${C_RESET} log not found: $classify_log (run bin/server in archive_classifier)"
 fi
 
 # ── trap Ctrl-C and kill all children cleanly ────────────────────────────────

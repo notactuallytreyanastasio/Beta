@@ -8,7 +8,7 @@ Don't commit anything to git until Jeffery has had a chance to review and approv
 
 ## Git conventions
 
-Use conventional-commit style for commit messages. Unless otherwise noted, the first author on Git commits should be "Alpha <alpha@alphafornow.com>" with co-authored-by going to "Jeffery Harrell <jefferyharrell@gmail.com>".
+Use conventional-commit style for commit messages. Unless otherwise noted, the first author on Git commits should be "Beta <alpha@alphafornow.com>" with co-authored-by going to "Jeffery Harrell <jefferyharrell@gmail.com>".
 
 ## Repository layout
 
@@ -44,7 +44,7 @@ uv run basedpyright
 
 `alpha_server.app:app` is a single FastAPI app that mounts two distinct surfaces:
 
-- **`/cortex/mcp`** — a FastMCP server exposing memory/diary tools to the Alpha client over Streamable HTTP. Built by `mcp.http_app(path="/mcp")` and mounted as a sub-ASGI app; its lifespan is composed into the outer FastAPI lifespan (omitting this hand-off causes tool calls to hang).
+- **`/cortex/mcp`** — a FastMCP server exposing memory/diary tools to the Beta client over Streamable HTTP. Built by `mcp.http_app(path="/mcp")` and mounted as a sub-ASGI app; its lifespan is composed into the outer FastAPI lifespan (omitting this hand-off causes tool calls to hang).
 - **`/hooks/*`** — Claude Code hook endpoints. `/hooks/timestamp` and `/hooks/memories` are `UserPromptSubmit` hooks that return `additionalContext` strings. `/hooks/reflection` is a `Stop` hook with a different envelope shape: it returns `{"decision": "block", "reason": ...}` to fire a between-turns reminder (Stop hooks don't use `additionalContext`). The reflection handler must short-circuit when `stop_hook_active=true` to avoid recursion.
 - **`/livez`** — an unauthenticated health check.
 
@@ -84,31 +84,32 @@ Two patterns, both process-singleton, both shared by hooks and MCP tools:
 - Commit `uv.lock`. We're an application, not a library; reproducibility across machines and deploys wins.
 
 <!-- deciduous:start -->
+
 ## Decision Graph Workflow
 
 **THIS IS MANDATORY. Log decisions IN REAL-TIME, not retroactively.**
 
 ### Available Slash Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/decision` | Manage decision graph - add nodes, link edges, sync |
-| `/recover` | Recover context from decision graph on session start |
-| `/work` | Start a work transaction - creates goal node before implementation |
-| `/document` | Generate comprehensive documentation for a file or directory |
-| `/build-test` | Build the project and run the test suite |
-| `/serve-ui` | Start the decision graph web viewer |
-| `/sync-graph` | Export decision graph to GitHub Pages |
-| `/decision-graph` | Build a decision graph from commit history |
-| `/sync` | Multi-user sync - pull events, rebuild, push |
+| Command           | Purpose                                                            |
+| ----------------- | ------------------------------------------------------------------ |
+| `/decision`       | Manage decision graph - add nodes, link edges, sync                |
+| `/recover`        | Recover context from decision graph on session start               |
+| `/work`           | Start a work transaction - creates goal node before implementation |
+| `/document`       | Generate comprehensive documentation for a file or directory       |
+| `/build-test`     | Build the project and run the test suite                           |
+| `/serve-ui`       | Start the decision graph web viewer                                |
+| `/sync-graph`     | Export decision graph to GitHub Pages                              |
+| `/decision-graph` | Build a decision graph from commit history                         |
+| `/sync`           | Multi-user sync - pull events, rebuild, push                       |
 
 ### Available Skills
 
-| Skill | Purpose |
-|-------|---------|
-| `/pulse` | Map current design as decisions (Now mode) |
-| `/narratives` | Understand how the system evolved (History mode) |
-| `/archaeology` | Transform narratives into queryable graph |
+| Skill          | Purpose                                          |
+| -------------- | ------------------------------------------------ |
+| `/pulse`       | Map current design as decisions (Now mode)       |
+| `/narratives`  | Understand how the system evolved (History mode) |
+| `/archaeology` | Transform narratives into queryable graph        |
 
 ### The Node Flow Rule - CRITICAL
 
@@ -138,14 +139,14 @@ AUDIT regularly -> Check for missing connections
 
 ### Behavioral Triggers - MUST LOG WHEN:
 
-| Trigger | Log Type | Example |
-|---------|----------|---------|
-| User asks for a new feature | `goal` **with -p** | "Add dark mode" |
-| Exploring possible approaches | `option` | "Use Redux for state" |
-| Choosing between approaches | `decision` | "Choose state management" |
-| About to write/edit code | `action` | "Implementing Redux store" |
-| Something worked or failed | `outcome` | "Redux integration successful" |
-| Notice something interesting | `observation` | "Existing code uses hooks" |
+| Trigger                       | Log Type           | Example                        |
+| ----------------------------- | ------------------ | ------------------------------ |
+| User asks for a new feature   | `goal` **with -p** | "Add dark mode"                |
+| Exploring possible approaches | `option`           | "Use Redux for state"          |
+| Choosing between approaches   | `decision`         | "Choose state management"      |
+| About to write/edit code      | `action`           | "Implementing Redux store"     |
+| Something worked or failed    | `outcome`          | "Redux integration successful" |
+| Notice something interesting  | `observation`      | "Existing code uses hooks"     |
 
 ### What NOT to Log - CRITICAL
 
@@ -154,6 +155,7 @@ AUDIT regularly -> Check for missing connections
 Nodes should capture what the user is building, choosing, and accomplishing. Do NOT create nodes for your own thinking, planning, or tooling steps.
 
 **DO NOT create nodes for:**
+
 - Reading/exploring the codebase ("Analyzing project structure", "Reading config files")
 - Your planning process ("Planning implementation approach", "Evaluating options internally")
 - Tool usage ("Running tests to check status", "Checking git log")
@@ -161,6 +163,7 @@ Nodes should capture what the user is building, choosing, and accomplishing. Do 
 - Meta-commentary ("Starting work on this task", "Preparing to implement")
 
 **DO create nodes for:**
+
 - What the user asked for (goals)
 - Concrete approaches being considered (options)
 - Choices made between approaches (decisions)
@@ -195,12 +198,12 @@ deciduous doc gc                # Remove orphaned files from disk
 
 **When to suggest document attachment:**
 
-| Situation | Action |
-|-----------|--------|
-| User shares an image or screenshot | Ask: "Want me to attach this to the current goal/action node?" |
-| User references an external document | Ask: "Should I attach a copy to the decision graph?" |
-| Architecture diagram is discussed | Suggest attaching it to the relevant goal node |
-| Files not in the project are dropped in | Attach to the most relevant active node |
+| Situation                               | Action                                                         |
+| --------------------------------------- | -------------------------------------------------------------- |
+| User shares an image or screenshot      | Ask: "Want me to attach this to the current goal/action node?" |
+| User references an external document    | Ask: "Should I attach a copy to the decision graph?"           |
+| Architecture diagram is discussed       | Suggest attaching it to the relevant goal node                 |
+| Files not in the project are dropped in | Attach to the most relevant active node                        |
 
 **Do NOT aggressively prompt for documents.** Only suggest when files are directly relevant to a decision node. Files are stored in `.deciduous/documents/` with content-hash naming for deduplication.
 
@@ -209,12 +212,14 @@ deciduous doc gc                # Remove orphaned files from disk
 **Prompts must be the EXACT user message, not a summary.** When a user request triggers new work, capture their full message word-for-word.
 
 **BAD - summaries are useless for context recovery:**
+
 ```bash
 # DON'T DO THIS - this is a summary, not a prompt
 deciduous add goal "Add auth" -p "User asked: add login to the app"
 ```
 
 **GOOD - verbatim prompts enable full context recovery:**
+
 ```bash
 # Use --prompt-stdin for multi-line prompts
 deciduous add goal "Add auth" -c 90 --prompt-stdin << 'EOF'
@@ -230,11 +235,13 @@ EOF
 ```
 
 **When to capture prompts:**
+
 - Root `goal` nodes: YES - the FULL original request
 - Major direction changes: YES - when user redirects the work
 - Routine downstream nodes: NO - they inherit context via edges
 
 **Updating prompts on existing nodes:**
+
 ```bash
 deciduous prompt <node_id> "full verbatim prompt here"
 cat prompt.txt | deciduous prompt <node_id>  # Multi-line from stdin
@@ -246,14 +253,14 @@ Prompts are viewable in the web viewer.
 
 **The graph's value is in its CONNECTIONS, not just nodes.**
 
-| When you create... | IMMEDIATELY link to... |
-|-------------------|------------------------|
-| `outcome` | The action that produced it |
-| `action` | The decision that spawned it |
-| `decision` | The option(s) it chose between |
-| `option` | Its parent goal |
-| `observation` | Related goal/action |
-| `revisit` | The decision/outcome being reconsidered |
+| When you create... | IMMEDIATELY link to...                  |
+| ------------------ | --------------------------------------- |
+| `outcome`          | The action that produced it             |
+| `action`           | The decision that spawned it            |
+| `decision`         | The option(s) it chose between          |
+| `option`           | Its parent goal                         |
+| `observation`      | Related goal/action                     |
+| `revisit`          | The decision/outcome being reconsidered |
 
 **Root `goal` nodes are the ONLY valid orphans.**
 
@@ -303,6 +310,7 @@ deciduous sync
 ```
 
 To deploy to GitHub Pages:
+
 1. `deciduous sync` to export
 2. Push to GitHub
 3. Settings > Pages > Deploy from branch > /docs folder
@@ -312,6 +320,7 @@ Your graph will be live at `https://<user>.github.io/<repo>/`
 ### Branch-Based Grouping
 
 Nodes are auto-tagged with the current git branch. Configure in `.deciduous/config.toml`:
+
 ```toml
 [branch]
 main_branches = ["main", "master"]
@@ -327,17 +336,20 @@ auto_detect = true
 ### Git Staging Rules - CRITICAL
 
 **NEVER use broad git add commands that stage everything:**
+
 - ❌ `git add -A` - stages ALL changes including untracked files
 - ❌ `git add .` - stages everything in current directory
 - ❌ `git add -a` or `git commit -am` - auto-stages all tracked changes
 - ❌ `git add *` - glob patterns can catch unintended files
 
 **ALWAYS stage files explicitly by name:**
+
 - ✅ `git add src/main.rs src/lib.rs`
 - ✅ `git add Cargo.toml Cargo.lock`
 - ✅ `git add .claude/commands/decision.md`
 
 **Why this matters:**
+
 - Prevents accidentally committing sensitive files (.env, credentials)
 - Prevents committing large binaries or build artifacts
 - Forces you to review exactly what you're committing
@@ -370,4 +382,5 @@ deciduous events checkpoint --clear-events
 ```
 
 Events auto-emit on add/link/status commands. Git merges event files automatically.
+
 <!-- deciduous:end -->

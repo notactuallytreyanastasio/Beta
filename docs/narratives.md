@@ -1,17 +1,17 @@
-# Narratives — Alpha repository deep dive
+# Narratives — Beta repository deep dive
 
-The Alpha repo is `alpha-server`: a Python FastAPI app that wires a stateful AI persona ("Alpha", whom Jeffery Harrell speaks to) into Claude Code via two surfaces — an MCP tool server ("Cortex") and a hook router.
+The Beta repo is `alpha-server`: a Python FastAPI app that wires a stateful AI persona ("Beta", whom Jeffery Harrell speaks to) into Claude Code via two surfaces — an MCP tool server ("Cortex") and a hook router.
 
 ## Cast of characters (from the repo, not outside knowledge)
 
 - **Jeffery** — the user. "He is a human, a tinkerer and a dilettante." (`hooks/memories_extract_queries.md`)
-- **Alpha** — "the AI to whom he is speaking; she is more than one year old, stateful and unique." (same file)
-- **Alpha-OLD / Alpha-App** — predecessor repos. Reflection-reminder text was "lifted verbatim from Alpha-App's suggest.py with two edits" (commit `ce66e50`). Memories hook is "ported from Alpha-OLD's user_prompt_submit hook" (commit `4cd4a9b`).
+- **Beta** — "the AI to whom he is speaking; she is more than one year old, stateful and unique." (same file)
+- **Beta-OLD / Beta-App** — predecessor repos. Reflection-reminder text was "lifted verbatim from Beta-App's suggest.py with two edits" (commit `ce66e50`). Memories hook is "ported from Beta-OLD's user_prompt_submit hook" (commit `4cd4a9b`).
 - **protoalpha** — the dev/testbed Claude Code project. End-to-end verifications happen "through Claude Code on protoalpha". (`13fcb2c`, `ca6cf59`, `eb98278`)
 - **workshop** — Jeffery's machine; the container host. "Trust boundary is the host (workshop VM)." (`e9e606c`)
 - **alpha-DB** — separate DB host reachable on the tailnet. (`c221875`)
 - **Bifrost** — the LLM gateway. "preserves Bifrost's structured JSON error body verbatim" (`8b72a88`); chat + embedding calls routed through it (`d66e85e`).
-- **Pondside / Pondsiders** — the umbrella ecosystem of related repos: `Pondsiders/Alpha-dotclaude` (Claude Code settings), `/Pondside/.claude/rules/python.md` (shared rules). (`f7085d1`, `4cd4a9b`, `ca6cf59`)
+- **Pondside / Pondsiders** — the umbrella ecosystem of related repos: `Pondsiders/Beta-dotclaude` (Claude Code settings), `/Pondside/.claude/rules/python.md` (shared rules). (`f7085d1`, `4cd4a9b`, `ca6cf59`)
 
 ## Narrative 1 — Bootstrapping the substrate
 
