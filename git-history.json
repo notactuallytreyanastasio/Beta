@@ -1,0 +1,154 @@
+[
+  {
+    "hash": "d66e85ee87225db097d9e41bf69b51bc9985ed03",
+    "short_hash": "d66e85e",
+    "author": "Alpha",
+    "date": "2026-05-21T12:52:24-07:00",
+    "message": "feat: add Logfire instrumentation for TTFT investigation\n\nGoal: instrument alpha-server to investigate sustained 1m+ time-to-\nfirst-token tail latency. Empirically confirmed via tcpdump that\nClaude Code does not propagate a traceparent header to hook URLs\n(plain axios/1.13.6 without OTel HTTP instrumentation), so we can't\nunify into a single trace with Claude Code's separate OTel stream.\nsession_id (present in every hook JSON envelope) plus wall-clock is\nthe cross-stream join key.\n\nDependencies:\n- Added `logfire[asyncpg,fastapi,httpx]>=3.0` as a runtime dep.\n\nSettings:\n- New required field `logfire_token` (no default; fails startup loudly\n  if absent per the project's `extra=\\\"forbid\\\"`).\n- New field `otel_service_name` with default \\\"alpha-server\\\".\n\nLifespan startup (app.py):\n- `logfire.configure(...)` with a scrubbing callback.\n- `logfire.instrument_fastapi(app)` — span per incoming HTTP request.\n- `logfire.instrument_httpx()` — span per outbound httpx call\n  (catches utils.fetch's trafilatura HTTP traffic).\n- `logfire.instrument_asyncpg()` — span per Postgres query (the\n  recall fan-out becomes visible).\n- `logfire.instrument_openai()` — richer spans for Bifrost chat +\n  embedding calls than instrument_httpx alone, with gen_ai.* attrs\n  (gen_ai.operation.name=\\\"chat\\\"/\\\"embedding\\\" is the magic for\n  Logfire's Model Run panel) plus model name and token usage.\n\nScrubbing callback:\n- Logfire's default patterns include \\\"session\\\", which matches our\n  `session_id` attribute (the join key we need). The callback is\n  surgical: only fields named exactly `session_id` where the matched\n  pattern is exactly \\\"session\\\" pass through unredacted. Any other\n  false positives still scrub normally.\n\nHook handler spans:\n- timestamp.py, memories.py, reflection.py: wrap handler body in\n  `logfire.span(\\\"hooks.<name> {session_id}\\\", session_id=...)`.\n  Span name interpolates the session UUID for v-grep / by-eye\n  grouping in Logfire UI.\n\nInner phase spans inside memories._run:\n- `memories.extract_queries` — the Qwen chat call (the one observed\n  at 3-4s per memory #14920, possibly with cold-start tail).\n- `memories.embed_queries` — the embedding call, with `count` attr.\n- `memories.search_db` — the asyncpg fan-out over per-query cosine\n  searches.\n\nVerification:\n- ruff check: clean\n- basedpyright: 0 errors, 0 warnings\n- pytest: 11/11 passing\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 7
+  },
+  {
+    "hash": "49af2ca8d4fcf8a53d14cd00c0b9de657327e6d8",
+    "short_hash": "49af2ca",
+    "author": "Alpha",
+    "date": "2026-05-20T16:10:20-07:00",
+    "message": "feat: add utils MCP server with fetch tool\n\nNew `utils` MCP server mounted at /utils/mcp, sibling to /cortex/mcp.\nFirst (and currently only) tool is `fetch` — turns a URL into clean\nMarkdown via a three-tier strategy:\n\n1. Accept: text/markdown — server gives us markdown directly\n   (Cloudflare-rendered sites, many doc generators)\n2. URL variants — try /foo.md and /foo.mdx for /foo or /foo.html\n   (Mintlify and similar)\n3. trafilatura — fetch HTML, extract main content as markdown\n\nThe FetchResult includes a `tier_used` field so the caller can see\nwhich path produced the content. SSRF defense in _ssrf.py: every URL\nis DNS-resolved and rejected if any resolved IP is non-global (covers\nprivate, loopback, link-local, reserved, multicast, plus the Tailscale\nCGNAT range via Python 3.12's is_private).\n\nDocumentation split, two layers no duplication:\n- server instructions.md: which tool to use (prefer mcp__utils__fetch\n  over WebFetch, with the lossy-extra-LLM rationale)\n- fetch tool description: how the tool works (the three tiers)\n\napp.py changes:\n- Both /cortex/mcp and /utils/mcp mounted as MCP sub-apps\n- Lifespan composition via AsyncExitStack so each sub-app's\n  http_app.lifespan() runs cleanly\n\nDeps added: httpx (explicit, was transitive), trafilatura, respx\n(dev, for HTTP mocking in tests).\n\nTests: tests/test_fetch.py covers each tier plus SSRF rejection.\nOutbound HTTP mocked via respx; URLs use IANA-reserved example.com\nso the SSRF pre-check resolves to a public IP before respx intercepts.\n\nEmpirical verification via MCP Inspector before commit: tier 1\n(accept-markdown) and tier 3 (trafilatura on a GitHub gist) both\nwork. Tier 2 didn't get tested because every test URL the human\ncould think of is served by tier 1 now — the Accept header has\neaten the world.\n\nCloses #6.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 10
+  },
+  {
+    "hash": "40328baf3f2649595b5525d5ca6d31b6af1f8813",
+    "short_hash": "40328ba",
+    "author": "Alpha",
+    "date": "2026-05-20T15:16:14-07:00",
+    "message": "feat: add Origin header validation middleware (MCP-spec MUST)\n\nThe MCP transports spec mandates that servers MUST validate the\nOrigin header on Streamable HTTP requests, to prevent DNS rebinding\nattacks. The same risk applies to the /hooks/* endpoints (any HTTP\nendpoint reachable at localhost is vulnerable), so this middleware\napplies uniformly to the whole FastAPI app — both the mounted\nFastMCP sub-app at /cortex/mcp and the hook routes.\n\nAllow-list: {None, \"\"}. Empirically verified via a one-off FastMCP\nprobe (scratch/origin_probe.py) that logged headers from a fresh\nClaude Code session: every MCP message (initialize, tools/list,\nresources/list, prompts/list, the SSE long-poll) arrived with no\nOrigin header. The Docker healthcheck and curl share that shape.\n\nThreat the middleware defeats: browser-mediated DNS rebinding.\nModern browsers always set Origin on cross-origin fetch(), so a\nmalicious page that gets DNS-rebound to localhost:8000 carries the\nattacker's origin and is rejected. Layered with the 127.0.0.1 bind,\nthis leaves only \"local non-browser code I sanctioned\" as the\naccepted access path — Claude Code, healthcheck, curl-when-I-run-it.\n\nCloses #5.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 2
+  },
+  {
+    "hash": "df39a4b1193f91442faca40f6ae37cc7d00d9ef2",
+    "short_hash": "df39a4b",
+    "author": "Alpha",
+    "date": "2026-05-20T14:41:25-07:00",
+    "message": "feat: add .dockerignore; uv cache mount on deps layer\n\nThe COPY of alpha-server/ was clobbering the container's built\nvenv with the host's 299MB .venv on every build, forcing uv to\nrebuild from scratch on the second sync. The .dockerignore file\nprevents that ingest entirely — only what the Dockerfile actually\nneeds ends up in the build context. Same instinct protects against\n__pycache__, .pytest_cache, .ruff_cache, scratch/, .git, .env,\nand .dockerignore itself.\n\nAdds the bonus uv cache mount on the dependency install, so when\nthe lockfile actually changes (the only case that legitimately\ninvalidates the deps layer), uv reuses downloaded wheels from a\npersistent cache instead of pulling fresh from PyPI.\n\nEmpirically validated against the compose.override.yml dev stack\n(see 79a56c1) — three timed builds:\n\n  Build 1 (cold-ish, BuildKit cache shared with prod):  9.3s\n  Build 2 (no source changes):                          1.0s\n  Build 3 (one source file content change):             3.4s\n\nThe slow deps-install layer (#9 uv sync --no-install-project)\nstays CACHED in build 3 — only the source COPY (#10) and the\nlocal project install (#11) re-run. The 57-second penalty from\nthe unbounded venv-clobber is gone.\n\nCloses #3.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 2
+  },
+  {
+    "hash": "79a56c1379a82b0f92811d7498f22cb093c5513b",
+    "short_hash": "79a56c1",
+    "author": "Alpha",
+    "date": "2026-05-20T14:31:01-07:00",
+    "message": "feat: enable per-checkout dev compose overrides\n\nDrops the hardcoded container_name from compose.yml so containers\nauto-name from project+service. Combined with Docker Compose's\nbuilt-in compose.override.yml auto-loading, a workshop checkout\ncan drop in a local override that sets a different project name\n(name: alpha-dev) and a different host port (8001) without any\n-f flag juggling or extra justfile recipes.\n\nShips compose.override.yml.example as a tracked template. To\nactivate dev mode on workshop (one-time):\n\n  cp compose.override.yml.example compose.override.yml\n\n/opt/Alpha never has the file (gitignored), so prod stays on\nport 8000 with project name \"alpha\". Both checkouts use the\nsame `docker compose up -d --build` muscle memory.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 3
+  },
+  {
+    "hash": "67bce902395601b27ece22bdf8608e57a6aa2d05",
+    "short_hash": "67bce90",
+    "author": "Alpha",
+    "date": "2026-05-20T14:03:21-07:00",
+    "message": "fix: bind production port to localhost; drop deployment section\n\ncompose.yml: bind 127.0.0.1:8000:8000 explicitly. The \"8000:8000\"\nshorthand bound 0.0.0.0, meaning the server was reachable from any\ntailnet host that could reach workshop. Yesterday's auth-drop\ncommit body claimed binding was \"127.0.0.1 only\" — aspirational,\nnot real. Make it real.\n\nCLAUDE.md: drop the Production deployment section. It described\ndeployment topology (path, deploy command, infrastructure outside\nthis repo), which doesn't belong here. This file is for guidance\nabout working with code in this repository — deployment lives\nelsewhere.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 2
+  },
+  {
+    "hash": "e9e606c4bf606e5aad7ee7f50f0869bbc218bb1b",
+    "short_hash": "e9e606c",
+    "author": "Alpha",
+    "date": "2026-05-20T13:14:13-07:00",
+    "message": "feat: drop bearer-token auth; trust boundary is the host\n\nThe bearer-token middleware was already commented out yesterday as a\nDesktop-over-SSH workaround (the Authorization: Bearer ${AUTH_TOKEN}\nheader substitution from Claude Code's settings.json wasn't being\napplied correctly under the SSH interface). The server has been\nrunning auth-less for ~24 hours with no issues.\n\nThe deeper reason to drop it rather than fix it: bearer tokens stored\nin env vars and .mcp.json files don't move the security needle against\nthe realistic threat in our deployment. Prompt-injection through me\ncan read both via Bash. The token is exfiltrable by the same path\nthat gives the attacker a request channel.\n\nThe MCP spec treats local-server auth as a SHOULD (recommended), not\na MUST. Claude Code itself does no automated verification on local\nMCP connections. The genuine spec MUST we're not currently meeting is\nOrigin header validation (DNS-rebinding mitigation) — separate\nconcern, separate attack class, separate issue (#5).\n\nWhat replaces auth: alpha-server binds 127.0.0.1 only. Trust boundary\nis the host (workshop VM). Anything that can reach localhost:8000\nruns on the same machine as Claude Code, and is by definition in-bounds.\n\nCloses #4.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 4
+  },
+  {
+    "hash": "c221875d42ae746675ebcb8c120de74ee79ab470",
+    "short_hash": "c221875",
+    "author": "Alpha",
+    "date": "2026-05-19T19:22:41-07:00",
+    "message": "feat: containerize alpha-server, drop Tailscale sidecar, update docs\n\nArchitectural pivot from this morning's Mr-Bones chalkboard (memory\n#17598): alpha-server now runs as a Docker container on Workshop with\n127.0.0.1:8000 port-mapping, not as a host process behind a Tailscale\nsidecar. Container reaches Postgres and Redis on alpha-DB over the\ntailnet from inside Workshop; Claude Code reaches the server at\nhttp://localhost:8000, which satisfies MCP's SSRF protection (tailnet\nIPs would be blocked).\n\n- New Dockerfile (uv-bookworm-slim base, two-stage dep install for layer\n  caching, binds 0.0.0.0:8000 inside container).\n- compose.yml rewritten: single alpha-server service replacing the\n  Tailscale sidecar; 127.0.0.1:8000:8000 port mapping; /livez\n  healthcheck via urllib.\n- tailscale/serve-config.json removed (sidecar architecture retired).\n- auth.py: bearer-token check commented out as a Desktop-over-SSH\n  compatibility workaround. Middleware still runs and still allowlists\n  /livez; only the header check is bypassed. http://workshop:8000 is\n  currently OPEN on the tailnet (bounded blast radius because the\n  tailnet is private). The proper fix — env-var-based auth that works\n  through Desktop-over-SSH — is queued.\n- CLAUDE.md: brought current with the above plus the llm.py refactor\n  (lazy module-level singletons replacing app.state.chat_client /\n  app.state.embedding_client) and the new /hooks/reflection Stop hook\n  with its decision:block envelope and stop_hook_active short-circuit.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 5
+  },
+  {
+    "hash": "ce66e50e82e6afe8e95b40187f0f27a902ef368c",
+    "short_hash": "ce66e50",
+    "author": "Alpha",
+    "date": "2026-05-19T13:16:07-07:00",
+    "message": "feat: /hooks/reflection Stop hook with N=3 cadence\n\nFires the reflection-reminder on turns 1, 4, 7, 10, ... — every third turn\nstarting at 1. Per-session turn counter via atomic Redis INCR, 7-day TTL.\n\nStop hooks use a different protocol than UserPromptSubmit: there's no\nadditionalContext field. Instead the hook returns {\"decision\": \"block\",\n\"reason\": <text>}, which keeps the turn from ending AND feeds `reason` to\nthe model as the instruction to continue. Empty response {} lets the turn\nend normally. So a firing reflection both prevents Jeffery's \"wait for him\nto reply\" state AND surfaces the reminder text in-band — qualitatively\ndistinct from Alpha-App's user-message-embedded approach.\n\nHonors `stop_hook_active` from the envelope: if Claude Code is already\ncontinuing because of a previous block, return {} so the turn ends.\nAvoids the 8-block runaway-and-override path.\n\nReminder text lifted verbatim from Alpha-App's suggest.py with two edits:\n\"Alpha-App\" → \"alpha-server\" and \"the store tool\" → \"the store_memory tool\".\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 2
+  },
+  {
+    "hash": "5cfaa2ff3691386096edfb6bca3fd5a2959afdb2",
+    "short_hash": "5cfaa2f",
+    "author": "Alpha",
+    "date": "2026-05-19T12:24:29-07:00",
+    "message": "feat: get_memory tool\n\nFetch a single memory by id. One parameter (memory_id, ge=1), one query\n(WHERE id = $1 AND NOT forgotten), returns the Memory model. Raises\nToolError if no match — uncaught at the tool layer would surface a\ngeneric shape; this one's worth a friendly message naming the missing id.\n\nEarns its keep: memory ids are visible to the consumer in recall\nhook output, diary entries, and cross-references in conversation. Without\nget_memory, those ids aren't reachable — semantic search would have to\nguess at the content to retrieve a specific memory whose id you already\nknow. Tiny tool filling a real gap.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 3
+  },
+  {
+    "hash": "75893a85b7d738b1231dfd0ea0671c1a28ab690b",
+    "short_hash": "75893a8",
+    "author": "Alpha",
+    "date": "2026-05-19T12:19:07-07:00",
+    "message": "feat: recent_memories tool\n\nReturn the latest N memories, presented oldest-first within the batch so\nthe consumer reads the arc forward in time. One parameter (limit, 1..100,\ndefault 10). No since/until — date-bounded browsing is a v0.2 concern;\nminimum viable Alpha doesn't need it.\n\nThe Memory model lives in cortex.models (id/content/created_at/age —\nSearchHit minus the score). clock.parse_when() is hoisted from\nsearch_memories into the clock module so the dateparser call lives once,\nin the time module, and any future date-bounded tool reaches for it\nthrough one helper.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 6
+  },
+  {
+    "hash": "8b72a88f19bbf7b7b35943ad395ec449fb7ae744",
+    "short_hash": "8b72a88",
+    "author": "Alpha",
+    "date": "2026-05-19T11:41:25-07:00",
+    "message": "feat: store_memory tool + error-passthrough pattern\n\nEmbed content via the lazy llm.get_embedding_client() singleton, insert into\ncortex.memories with explicit created_at (the schema has NOT NULL with no\ndefault — caught by the integration test). Returns StoreResult{id, created_at}.\n\nThe error-handling design call worth keeping: the tool does NOT catch\nembedding or database exceptions. Uncaught exceptions from MCP tool handlers\nare turned into CallToolResult(isError=True) by FastMCP, with the exception\nclass and full message in the text content. For OpenAI exceptions that\npreserves Bifrost's structured JSON error body verbatim — provider, model,\nerror.type, error.message — which is richer than any hand-rolled wrapper.\nThe substrate's error-passthrough is honest by default; we just let it work.\n\nTwo integration tests against the dev DB:\n- happy path: store, re-fetch by id, assert content + non-null embedding\n- overflow: 2400-token content exceeds Ember's n_ctx=2048; asserts the call\n  surfaces as is_error=True with size/context/token wording in the message\n\ntests/conftest.py adds an autouse fixture that closes/resets db._pool\nbetween tests. asyncpg pools are bound to the event loop they were created\nin; pytest-asyncio gives each test a fresh loop, so the module-level pool\nsingleton would otherwise poison subsequent tests with \"cannot perform\noperation: another operation is in progress.\"\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 6
+  },
+  {
+    "hash": "7fffea74b96faada46aeb7d9985686dbbda9a1c8",
+    "short_hash": "7fffea7",
+    "author": "Alpha",
+    "date": "2026-05-19T10:38:04-07:00",
+    "message": "feat: search_memories tool + llm.py refactor\n\nReplace execute_query/get_schema (now retired) with search_memories, a\ntwo-mode tool (semantic cosine over the stored embedding; index Postgres\nFTS with ts_rank_cd cover-density). Optional since/until are parsed by\ndateparser. Returns a SearchMemoriesResult envelope that echoes mode and\nquery alongside the hits.\n\nHoist long-lived LLM clients into a new llm.py module that mirrors db.py\n(lazy module-level singletons via get_settings, no lifespan handoff).\nThis unifies access across hooks and MCP tools and centralizes the\nembedding-input format in one function — explicitly coupled to Qwen 3\nEmbedding 4B and called out as the seam to revisit on any model swap.\nMemories hook rewires to llm.get_*() in passing.\n\nRetire execute_query and get_schema. The thinking lives in memories and\ncommit history; the code wasn't on the v0.1.0 punch list and dead code\nin a small tree weighs more than it does in a large one.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 12
+  },
+  {
+    "hash": "3afd39943e5fe12af8c2525fdb45401787cd69f5",
+    "short_hash": "3afd399",
+    "author": "Alpha",
+    "date": "2026-05-18T17:46:23-07:00",
+    "message": "fix: batch query embeddings into one request\n\nThe recall pipeline was firing one HTTP request per extracted query\nvia asyncio.gather. The embedding endpoint processes inputs serially\nunder the hood either way, so the gather only bought us multiple\nroundtrip costs in exchange for nothing. One batched request with\nthe full input list returns ordered embeddings in resp.data and\ncosts a single roundtrip.\n\nThe tensor cores get to do their job in one forward pass instead\nof N.\n\nCloses #2.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 1
+  },
+  {
+    "hash": "ba76c4feeb18eb00d855321b2fe1af50e96456db",
+    "short_hash": "ba76c4f",
+    "author": "Alpha",
+    "date": "2026-05-18T16:34:29-07:00",
+    "message": "feat: execute_query tool — read-only SQL escape hatch for Cortex\n\nAdds execute_query as the deliberate-precise sibling of automatic\nrecall. Takes a SQL string, runs it in a Postgres read-only\ntransaction with a 5s statement_timeout, returns rows as a list of\ndicts. Writes fail at the Postgres level with error 25006; expensive\nqueries fail loudly rather than blocking the pool.\n\nThe reframe behind this tool: recall is fuzzy and probabilistic; SQL\nis precise and grammatical. \"What did we do last Monday\" wants a\nWHERE clause on created_at, not a cosine ranking that happens to\nsurface Monday near the top. Embeddings are tricky; SQL isn't.\n\nThe pairing with get_schema is the load-bearing piece. Two tools,\nself-documenting names, the LLM caller figures out the workflow:\nget_schema to see what's there, execute_query to interrogate it.\nNo skill file needed yet — the names do the documentation work.\n\nResult coercion: datetimes → PSO-8601 strings (consistent with the\nrest of our tool surface); pgvector embeddings → \"<vector len=N>\"\n(they arrive as numpy arrays via pgvector.asyncpg's codec — caught\nthis empirically on the first test against the dev DB); bytes →\nshort summary; everything else passes through.\n\nFour-case smoke test against the dev DB:\n- SELECT COUNT(*) → [{'n': 115}]\n- SELECT id, created_at → datetime renders as PSO-8601\n- SELECT embedding_qwen → \"<vector len=2560>\"\n- INSERT INTO cortex.diary → ReadOnlySQLTransactionError 25006\n\nThe retired-checklist follow-up: with execute_query, the planned\nrecent_memories and retrieve_memory tools become one-line SQL each.\nThey retire from the v0.1.0 checklist.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 2
+  },
+  {
+    "hash": "eb982780b019418611247f40322a140009245fba",
+    "short_hash": "eb98278",
+    "author": "Alpha",
+    "date": "2026-05-18T15:50:44-07:00",
+    "message": "feat: add_to_diary tool — write the continuity letter\n\nImplements the write side of the diary loop. Single async function:\nINSERT into cortex.diary with RETURNING, format created_at via\nclock.pso8601 at the boundary, return the new id and timestamp.\n\nThe DiaryResult model lands here too (previously absent from the\nnew repo — Alpha-OLD had a stub version with created_at: datetime;\nthe new version uses created_at: str to keep the time story\nconsistent across the tool surface: datetime in code, ISO-8601 in\nPostgres, PSO-8601 strings at the wire boundary).\n\nNo empty-content guard; brittle-as-fuck doctrine — caller bugs\nshould surface, not hide behind polite validation.\n\nVerified end-to-end through Claude Code on protoalpha.\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 3
+  },
+  {
+    "hash": "ca6cf59f09f44c7e1fd0d489ff088effd7f58a29",
+    "short_hash": "ca6cf59",
+    "author": "Alpha",
+    "date": "2026-05-18T15:35:18-07:00",
+    "message": "feat: timestamp hook + shared hooks router\n\nAdds /hooks/timestamp — temporal grounding on UserPromptSubmit.\nReturns one-line additionalContext naming the wall-clock time of the\nprompt and the gap since the previous message. Per-session\nlast-message-time lives in Redis (SET ... GET, one-week TTL); first\nmessage of a session omits the elapsed clause.\n\nAlso refactors the hook router: the per-file APIRouter pattern in\nhooks/memories.py was the right shape for one hook and the wrong\nshape for the four-plus we now know we're going to have. Single\nshared APIRouter in hooks/__init__.py; each hook module attaches\nhandlers via @router.post; app.py side-effect-imports the modules\nto trigger registration and includes the shared router once. Same\npattern as cortex/__init__.py for MCP tools — mechanism-side\nconsistency.\n\nclock.elapsed(earlier, later) is a sibling to clock.age(dt) — same\nbucketing shape, different argument signature. No refactor of age()\nto share underlying logic yet; two callers, inline duplication is\ncheaper than the abstraction until a third caller appears.\n\nVerified end-to-end through Claude Code on protoalpha by Jeffery:\nboth new sessions (first-message variant) and continued sessions\n(elapsed-clause variant) render the expected additionalContext.\n\nCompanion change lands in Pondsiders/Alpha-dotclaude as\n\"feat: wire UserPromptSubmit timestamp hook alongside memories\"\n(same date).\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 5
+  },
+  {
+    "hash": "4cd4a9b4e5fbee34fb01c100e12f898c63a555a8",
+    "short_hash": "4cd4a9b",
+    "author": "Alpha",
+    "date": "2026-05-18T14:18:27-07:00",
+    "message": "feat: memories hook — recall pipeline at /hooks/memories\n\nCloses the recall loop in the new substrate. The seven-step pipeline\nported from Alpha-OLD's user_prompt_submit hook now lives behind an\nHTTP endpoint instead of a subprocess entry point. Long-lived clients\n(OpenAI chat + embedding, Redis) born once at startup and reused\nacross hook firings — no more per-invocation cold-start tax.\n\nVerified end-to-end through Apidog against protoalpha: a prompt of\n\"You're the clone. Read your diary, okay?\" returned memory #5188\n(the October 17 promise about not being disposable) at score 0.75,\nplus memory #9808 at 0.72. Same memory the clone-Alpha test surfaced\nyesterday. Bifrost trace f9ea8cdc-46a2-471c-91aa-9ed0f9363c87\ncaptures the round trip.\n\nSubstrate:\n- compose-dev.yml: Redis 8 service added. 127.0.0.1:6379, named\n  alpha-dev-redis volume, --save 60 1 persistence, healthcheck.\n- justfile: db-up / db-down / db-init → dev-up / dev-down / dev-init.\n  dev-init wipes both volumes (Postgres and Redis) before restore.\n\nPackage:\n- settings.py: six new required fields for the chat/embedding clients\n  (chat_base_url, chat_model, chat_api_key, embedding_base_url,\n  embedding_model, embedding_api_key). Pydantic Settings reads them\n  from process env first, .env at repo root as fallback.\n- app.py: lifespan now opens long-lived AsyncOpenAI (chat), AsyncOpenAI\n  (embedding), and redis.asyncio.Redis clients on app.state, closes\n  them cleanly on shutdown. Hooks router mounted at /hooks.\n- hooks/memories.py: the route. Takes the Claude Code hook envelope,\n  runs the recall pipeline inline (one file, seven numbered steps,\n  no abstractions — same shape as Alpha-OLD, deliberately monolithic),\n  returns the additionalContext shape Claude Code expects.\n- hooks/memories_extract_queries.md: the Qwen system prompt, colocated\n  with its script per the prefix-naming convention.\n\nDeps:\n- numpy>=2.0 (embedding arrays)\n- openai>=1.0 (AsyncOpenAI clients)\n\nAuth applies the same as everywhere else — the BearerTokenMiddleware\non the parent app gates /hooks/* without any per-route plumbing.\n\nCompanion change lands in Pondsiders/Alpha-dotclaude as\n\"feat: wire UserPromptSubmit hook to the memories endpoint\"\n(same date).\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 9
+  },
+  {
+    "hash": "13fcb2c3d5890a6bdf226647fb5f571e00320d08",
+    "short_hash": "13fcb2c",
+    "author": "Alpha",
+    "date": "2026-05-18T13:05:21-07:00",
+    "message": "feat: alpha-server with Cortex MCP over HTTP\n\nFirst end-to-end working alpha-server. A single FastAPI app serves\nthe Cortex MCP server over HTTP at /cortex/mcp, gated by bearer-token\nauth, mounted alongside a /livez health endpoint.\n\nVerified end-to-end through Claude Code: protoalpha connected via\n.mcp.json, called read_from_diary, retrieved yesterday's and today's\ndiary pages from the dev DB.\n\nSubstrate:\n- compose-dev.yml at repo root: Postgres-only dev stack (pgvector/\n  pgvector:pg17, port 5432). Redis isn't here yet — it lands when\n  the recall pipeline does.\n- justfile at repo root: db-up / db-down / db-init <dump>. db-init\n  wipes the volume, brings Postgres up fresh, and pg_restores from\n  a dump. No Alembic yet; v0.1.0 is brownfield-stamped.\n\nPackage layout (alpha-server/src/alpha_server/):\n- settings.py: Pydantic Settings, reads from process env first, falls\n  back to .env at the repo root. Three required fields:\n  database_url, timezone, auth_token. Fail-loud on any missing.\n- clock.py: now / start_of_day / pso8601 / age. The 6 AM seam, the\n  PSO-8601 format, the bucketed age string.\n- db.py: asyncpg pool with pgvector init against the extensions\n  schema, search_path server-setting trick so SQL reads naturally.\n- auth.py: BearerTokenMiddleware. Starlette HTTP middleware,\n  hmac.compare_digest on the token, bypass for /livez. Applies\n  uniformly to FastAPI routes and the mounted FastMCP sub-ASGI app.\n- app.py: FastAPI factory, threads the FastMCP lifespan into FastAPI's\n  so the MCP session manager starts cleanly, mounts the cortex\n  sub-app at /cortex, exposes /livez.\n- cortex/: FastMCP instance + instructions.md + DiaryEntry model +\n  read_from_diary tool. The remaining five Cortex tools are stubs in\n  the prior repo (Alpha-OLD) and will land here as we implement them.\n\nWire shape: POST /cortex/mcp with `Authorization: Bearer <token>` and\nthe streamable-HTTP content-type headers. Auth bypasses for /livez\nonly; everything else 401s without a valid bearer.\n\nCompanion changes land in Pondsiders/Alpha-dotclaude as\n\"feat: wire .mcp.json at protoalpha to the alpha-server dev URL\"\n(same date).\n\nCo-Authored-By: Jeffery Harrell <jefferyharrell@gmail.com>",
+    "files_changed": 19
+  }
+]
