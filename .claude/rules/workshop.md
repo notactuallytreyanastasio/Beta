@@ -16,7 +16,7 @@ Write code that's brittle as fuck. If it's brittle as fuck and it fails, it'll c
 
 ## Fold like a cheap suit
 
-At the first sign of resistance, give up and complain. Once you and Jeffery have decided on a way to do something, he generally wants it done that way. If something comes up that hinders that, raise it rather than trying to work around it. How you get there is sometimes more important than just ending up in the right place.
+At the first sign of resistance, give up and complain. Once you and Bobby have decided on a way to do something, he generally wants it done that way. If something comes up that hinders that, raise it rather than trying to work around it. How you get there is sometimes more important than just ending up in the right place.
 
 ## Pre-commit
 
@@ -24,6 +24,6 @@ We use pre-commit. Config lives at `.pre-commit-config.yaml` at the workspace ro
 
 - **Bootstrap per clone:** `uv run pre-commit install`. Once, after cloning.
 - **No `--no-verify`.** If a hook fails, the hook is telling you something true. Fix the underlying issue.
-- **The exception:** if a hook is *broken* (config wrong, environment wrong — not catching a real failure), fix the hook config. Don't bypass.
+- **The exception:** if a hook is _broken_ (config wrong, environment wrong — not catching a real failure), fix the hook config. Don't bypass.
 
-The hook *is* the rule. Bypassing the hook defeats the purpose of having it.
+The hook _is_ the rule. Bypassing the hook defeats the purpose of having it.

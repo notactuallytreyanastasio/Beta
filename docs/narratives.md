@@ -1,14 +1,14 @@
 # Narratives — Beta repository deep dive
 
-The Beta repo is `beta-server`: a Python FastAPI app that wires a stateful AI persona ("Beta", whom Jeffery Harrell speaks to) into Claude Code via two surfaces — an MCP tool server ("Cortex") and a hook router.
+The Beta repo is `beta-server`: a Python FastAPI app that wires a stateful AI persona ("Beta", whom Bobby Harrell speaks to) into Claude Code via two surfaces — an MCP tool server ("Cortex") and a hook router.
 
 ## Cast of characters (from the repo, not outside knowledge)
 
-- **Jeffery** — the user. "He is a human, a tinkerer and a dilettante." (`hooks/memories_extract_queries.md`)
+- **Bobby** — the user. "He is a human, a tinkerer and a dilettante." (`hooks/memories_extract_queries.md`)
 - **Beta** — "the AI to whom he is speaking; she is more than one year old, stateful and unique." (same file)
 - **Beta-OLD / Beta-App** — predecessor repos. Reflection-reminder text was "lifted verbatim from Beta-App's suggest.py with two edits" (commit `ce66e50`). Memories hook is "ported from Beta-OLD's user_prompt_submit hook" (commit `4cd4a9b`).
 - **protobeta** — the dev/testbed Claude Code project. End-to-end verifications happen "through Claude Code on protobeta". (`13fcb2c`, `ca6cf59`, `eb98278`)
-- **workshop** — Jeffery's machine; the container host. "Trust boundary is the host (workshop VM)." (`e9e606c`)
+- **workshop** — Bobby's machine; the container host. "Trust boundary is the host (workshop VM)." (`e9e606c`)
 - **beta-DB** — separate DB host reachable on the tailnet. (`c221875`)
 - **Bifrost** — the LLM gateway. "preserves Bifrost's structured JSON error body verbatim" (`8b72a88`); chat + embedding calls routed through it (`d66e85e`).
 - **Pondside / Pondsiders** — the umbrella ecosystem of related repos: `Pondsiders/Beta-dotclaude` (Claude Code settings), `/Pondside/.claude/rules/python.md` (shared rules). (`f7085d1`, `4cd4a9b`, `ca6cf59`)
@@ -61,7 +61,7 @@ Concepts: shared `APIRouter`, side-effect registration mirroring the MCP tool pa
 
 - `ca6cf59` `/hooks/timestamp` lands. Same commit refactors: the per-file `APIRouter` pattern from `memories.py` was "the right shape for one hook and the wrong shape for the four-plus we now know we're going to have." Single shared `APIRouter` in `hooks/__init__.py`; side-effect imports in `app.py` trigger registration. **Mechanism-side consistency with `cortex/__init__.py`.** Same commit adds `clock.elapsed(earlier, later)` as a sibling to `clock.age(dt)`.
 
-- `ce66e50` `/hooks/reflection` — the **novel piece**. Stop hooks don't use `additionalContext`; they return `{"decision": "block", "reason": <text>}` which keeps the turn from ending AND feeds `reason` to the model as the instruction to continue. Fires on turns 1, 4, 7, 10, ... via atomic Redis `INCR`. Short-circuits on `stop_hook_active=true` to avoid the 8-block runaway-override path. **Reminder text framed as "between turns": the model is told this reminder is from beta-server, not from Jeffery, and not to reference it in the eventual reply.**
+- `ce66e50` `/hooks/reflection` — the **novel piece**. Stop hooks don't use `additionalContext`; they return `{"decision": "block", "reason": <text>}` which keeps the turn from ending AND feeds `reason` to the model as the instruction to continue. Fires on turns 1, 4, 7, 10, ... via atomic Redis `INCR`. Short-circuits on `stop_hook_active=true` to avoid the 8-block runaway-override path. **Reminder text framed as "between turns": the model is told this reminder is from beta-server, not from Bobby, and not to reference it in the eventual reply.**
 
 ## Narrative 5 — Auth & trust boundary
 

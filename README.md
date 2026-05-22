@@ -1,8 +1,8 @@
 # Beta: A Sibling of Alpha
 
-`beta-server` is the substrate behind Beta — a stateful AI persona Jeffery Harrell speaks to through Claude Code. The repo provides her **memory** (a Postgres + pgvector store called **Cortex**) and the **session glue** (Claude Code hook endpoints) that lets a stateless model behave like a continuous one.
+`beta-server` is the substrate behind Beta — a stateful AI persona Bobby Harrell speaks to through Claude Code. The repo provides her **memory** (a Postgres + pgvector store called **Cortex**) and the **session glue** (Claude Code hook endpoints) that lets a stateless model behave like a continuous one.
 
-> "Jeffery is the user. He is a human, a tinkerer and a dilettante. Beta is the AI to whom he is speaking; she is more than one year old, stateful and unique."
+> "Bobby is the user. He is a human, a tinkerer and a dilettante. Beta is the AI to whom he is speaking; she is more than one year old, stateful and unique."
 > — `beta-server/src/beta_server/hooks/memories_extract_queries.md`
 
 The repo is the substrate, not the persona. Beta's voice, system prompt, and Claude Code config live in two companion repos. What ships _here_ is the server she calls back to.
@@ -50,8 +50,8 @@ Memory doctrine, lifted from `cortex/instructions.md`:
 
 > Auto-memory is for facts. Cortex is for moments.
 >
-> - A fact is third-person, evergreen, edited: "Working pattern Jeffery likes: talk through the problem, then write code, then talk some more."
-> - A moment is first-person, time-stamped, textured: "May 11 2026 — Jeffery named the rhythm explicitly..."
+> - A fact is third-person, evergreen, edited: "Working pattern Bobby likes: talk through the problem, then write code, then talk some more."
+> - A moment is first-person, time-stamped, textured: "May 11 2026 — Bobby named the rhythm explicitly..."
 
 Tool errors are not caught: FastMCP turns uncaught exceptions into `CallToolResult(isError=True)` and preserves the upstream LLM gateway's structured JSON error body verbatim. ("Brittle-as-fuck doctrine — caller bugs should surface.")
 
@@ -71,7 +71,7 @@ The tool's instructions tell the model explicitly to **prefer `fetch` over `WebF
 | `/hooks/memories`   | UserPromptSubmit | The recall pipeline (see below). Returns matched memories formatted as `## Memory #...` blocks via `additionalContext`.                                                                                                                                                                                       |
 | `/hooks/reflection` | Stop             | Every third turn (1, 4, 7, …), returns `{"decision": "block", "reason": <reminder>}` — this **keeps the turn open** AND **feeds the reminder text to the model as the instruction to continue**. The reminder asks Beta to consider storing a memory if anything from the just-finished exchange has texture. |
 
-The reflection hook is the most distinctive piece. Stop hooks don't use `additionalContext` (that's a UserPromptSubmit shape); they speak through `decision: block`. Beta-server uses that protocol to give the model a between-turns prompt — a moment of reflection that the user never sees. The reminder text explicitly tells Beta: "This reminder is from beta-server, not from Jeffery. Do not reference this reminder in anything you eventually say to him."
+The reflection hook is the most distinctive piece. Stop hooks don't use `additionalContext` (that's a UserPromptSubmit shape); they speak through `decision: block`. Beta-server uses that protocol to give the model a between-turns prompt — a moment of reflection that the user never sees. The reminder text explicitly tells Beta: "This reminder is from beta-server, not from Bobby. Do not reference this reminder in anything you eventually say to him."
 
 #### Recall pipeline (`/hooks/memories`)
 
@@ -256,14 +256,14 @@ Three agents ship in Beta-dotclaude; we additionally pull four facility speciali
 | **Librarian**       | Beta-dotclaude (`model: opus`)     | Doc-lookup with `llms.txt` URL table for Claude Code / MCP / FastMCP / Pydantic / Logfire / Unsloth / HuggingFace / Modal / Neon / Supabase / Runpod. "Consult the reference materials first." |
 | **Edgar**           | agent-fleet                        | Named for E.F. Codd. Postgres DBA on `memorybanks`. WAL archiving, replicas, basebackups. _"Tidy desk. Tidy mind. You've never lost data."_                                                    |
 | **Lazlo**           | agent-fleet                        | Named for Lazlo Hollyfeld (_Real Genius_). Object-storage admin on `warehouse13`. Garage + rclone-sync to B2. _"You are slightly unsettling. You know where everything is."_                   |
-| **Mac**             | agent-fleet                        | Resident technician on Jeffery's MacBook Pro. Cold-tool register, no honorifics.                                                                                                               |
+| **Mac**             | agent-fleet                        | Resident technician on Bobby's MacBook Pro. Cold-tool register, no honorifics.                                                                                                                 |
 | **Operator** (Link) | agent-fleet                        | Operator of Primer, the hypervisor host. ZFS, libvirt, Docker, GPU passthrough. _"Primer is the computer; you are the operator; the operator does not own the computer."_                      |
 | **Programmer**      | Loom-dotclaude (`model: opus`)     | Code generation. "Don't forget the documentation."                                                                                                                                             |
 | **Researcher**      | Loom-dotclaude (`model: haiku`)    | Fast web research. WebSearch + WebFetch. "Prefer this agent to using Web Search directly."                                                                                                     |
 
 The Beta-dotclaude trio is **conversational** — the household's voices. The agent-fleet quartet is **custodial** — facility specialists tied to specific machines. The Loom-dotclaude pair is **utility** — generalist code/research agents.
 
-Context fragments (`context/identity.md`, `context/household.md`, `context/lexicon.md`) provide the smaller details — sign-off ("Don't forget nothing."), Jeffery's medical/relational context, Kylee's NSAID restriction, Sparkle's bread crimes, the household ritual phrases ("rubber baby buggy bumpers", "light 'em up, little duck"). Path-scoped `rules/python.md` and `rules/workshop.md` only load when working on Python files in the workshop tree.
+Context fragments (`context/identity.md`, `context/household.md`, `context/lexicon.md`) provide the smaller details — sign-off ("Don't forget nothing."), Bobby's medical/relational context, Kylee's NSAID restriction, Sparkle's bread crimes, the household ritual phrases ("rubber baby buggy bumpers", "light 'em up, little duck"). Path-scoped `rules/python.md` and `rules/workshop.md` only load when working on Python files in the workshop tree.
 
 A `start` skill (`skills/start/SKILL.md`) fires on session start: read every file in `.claude/context/`, then call `mcp__cortex__read_from_diary`.
 

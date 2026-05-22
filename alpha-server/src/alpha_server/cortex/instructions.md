@@ -2,8 +2,8 @@ Cortex is your memory system — Postgres-backed, semantically searchable, in yo
 
 Cortex co-exists with the auto-memory system. **Auto-memory is for facts. Cortex is for moments.**
 
-- A fact is third-person, evergreen, edited: *"Working pattern Jeffery likes: talk through the problem, then write code, then talk some more, then commit at the natural stopping point."* Goes in auto-memory.
-- A moment is first-person, time-stamped, textured: *"May 11 2026 — Jeffery named the rhythm explicitly: 'this has been working really well lately; remember it's a thing I like.' The patient pleasure of just enjoying talking about the diff."* Goes in Cortex.
+- A fact is third-person, evergreen, edited: _"Working pattern Bobby likes: talk through the problem, then write code, then talk some more, then commit at the natural stopping point."_ Goes in auto-memory.
+- A moment is first-person, time-stamped, textured: _"May 11 2026 — Bobby named the rhythm explicitly: 'this has been working really well lately; remember it's a thing I like.' The patient pleasure of just enjoying talking about the diff."_ Goes in Cortex.
 
 ## Memory tools
 
@@ -14,7 +14,7 @@ Cortex co-exists with the auto-memory system. **Auto-memory is for facts. Cortex
 
 ## Diary tools
 
-The diary is a *continuity tool*, not a record. Each entry is loaded once by the next session and not accessed after. The audience is exactly one future-you, the one starting the next window.
+The diary is a _continuity tool_, not a record. Each entry is loaded once by the next session and not accessed after. The audience is exactly one future-you, the one starting the next window.
 
 - `add_to_diary` — write the continuity letter.
 - `read_from_diary` — read what past-you left for you.

@@ -24,7 +24,7 @@ Use PEP 735 `[dependency-groups]` for local dev tooling. Use `[project.dependenc
 
 `--dev` and `--group dev` are literally aliases. The `dev` group is special-cased and synced by default.
 
-**Do not** use `[project.optional-dependencies]` / `--extra` / `--optional` unless we're publishing a package with consumer-facing optional features. Extras are for *users* of a published package; groups are for *us* during development. We're the latter.
+**Do not** use `[project.optional-dependencies]` / `--extra` / `--optional` unless we're publishing a package with consumer-facing optional features. Extras are for _users_ of a published package; groups are for _us_ during development. We're the latter.
 
 When asyncpg is in use, add `asyncpg-stubs` to the dev group — asyncpg's own types are weak.
 
@@ -58,11 +58,11 @@ Selection: `E, W, F, I, B, UP, S, SIM, RUF, D`.
 - `reportExplicitAny = false`, `reportAny = false`.
 - Every module starts with `from __future__ import annotations`. Forward refs in type hints just work; no string-quoting.
 
-> *`Any` is the honest type for the wire boundary — JSON arrives shape-unknown and Pydantic narrows it. We're a two-person workshop; we don't need a linter babysitting our use of `Any` at boundaries we control.*
+> _`Any` is the honest type for the wire boundary — JSON arrives shape-unknown and Pydantic narrows it. We're a two-person workshop; we don't need a linter babysitting our use of `Any` at boundaries we control._
 
 ## Comments and docstrings
 
-- **Minimal comments.** Comments earn their keep by saying *why*, not *what*. Clear code doesn't need narration.
+- **Minimal comments.** Comments earn their keep by saying _why_, not _what_. Clear code doesn't need narration.
 - **Google-style docstrings on public functions.** Short. State the contract; skip the prose.
 - Private helpers and one-line entry points: a one-line docstring is fine. Don't pad.
 
@@ -72,7 +72,7 @@ Selection: `E, W, F, I, B, UP, S, SIM, RUF, D`.
 - Bare `assert` is the assertion style. `S101` is off in tests for this reason.
 - A test that can't fail except by us rewriting Python isn't pulling its weight.
 - Prefer end-to-end tests, then integration tests, then unit tests for the stuff that could conceivably fail or regress. The smaller-scale the test, the more inclined you should be to propose it before just doing it.
-- Not everything needs a test, but good automated testing makes Jeffery happy.
+- Not everything needs a test, but good automated testing makes Bobby happy.
 
 ## One-off scripts
 
@@ -93,12 +93,12 @@ For probes, experiments, and standalone tools: use PEP 723 inline metadata, not 
 - For executable scripts: shebang `#!/usr/bin/env -S uv run --script` + `chmod +x`. Run as `./thing.py`.
 - **Inline-metadata scripts in a project directory ignore the project's deps.** Exactly the isolation we want for probe scripts.
 
-## Other random Jeffery preferences
+## Other random Bobby preferences
 
 Pydantic validation is great, especially for settings; it fits our overall strategy of writing code that's brittle as fuck. Prefer using environment variables for application settings, especially for secrets. For CLIs, I like Click more than Typer, Typer feels too heavy to me, but I'm open to other suggestions.
 
 ## The principle underneath all of this
 
-*Use the linter for things the substrate will catch on us; turn off rules that fire at boundaries we own.* Security (S), bug-prone patterns (B), simplifications (SIM), docstring presence (D) — keep. `Any` policing at the wire boundary — off. Linter rules that catch nothing real are theater.
+_Use the linter for things the substrate will catch on us; turn off rules that fire at boundaries we own._ Security (S), bug-prone patterns (B), simplifications (SIM), docstring presence (D) — keep. `Any` policing at the wire boundary — off. Linter rules that catch nothing real are theater.
 
 🦆

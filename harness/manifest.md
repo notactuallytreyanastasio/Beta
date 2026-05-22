@@ -38,7 +38,7 @@ A Claude Code plugin marketplace at `.claude-plugin/marketplace.json`, with four
 | --------------- | ----------- | ------------------------------------------------------------------------- |
 | Edgar           | `edgar/`    | Postgres DBA on `memorybanks`. Owns WAL archiving, replicas, basebackups. |
 | Lazlo           | `lazlo/`    | Object-storage admin on `warehouse13`. Owns Garage, rclone-sync to B2.    |
-| Mac             | `mac/`      | Resident technician on Jeffery's MacBook Pro. Cold-tool register.         |
+| Mac             | `mac/`      | Resident technician on Bobby's MacBook Pro. Cold-tool register.           |
 | Operator (Link) | `operator/` | Resident operator of Primer (hypervisor host). Owns ZFS, libvirt, Docker. |
 
 Production install path is `/plugin marketplace add Pondsiders/agent-fleet`. For this harness we copy the agent `.md` files directly into `.claude/agents/` so they're picked up without the plugin subscription.
