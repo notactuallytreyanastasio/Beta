@@ -1,15 +1,15 @@
 # Narratives — Beta repository deep dive
 
-The Beta repo is `alpha-server`: a Python FastAPI app that wires a stateful AI persona ("Beta", whom Jeffery Harrell speaks to) into Claude Code via two surfaces — an MCP tool server ("Cortex") and a hook router.
+The Beta repo is `beta-server`: a Python FastAPI app that wires a stateful AI persona ("Beta", whom Jeffery Harrell speaks to) into Claude Code via two surfaces — an MCP tool server ("Cortex") and a hook router.
 
 ## Cast of characters (from the repo, not outside knowledge)
 
 - **Jeffery** — the user. "He is a human, a tinkerer and a dilettante." (`hooks/memories_extract_queries.md`)
 - **Beta** — "the AI to whom he is speaking; she is more than one year old, stateful and unique." (same file)
 - **Beta-OLD / Beta-App** — predecessor repos. Reflection-reminder text was "lifted verbatim from Beta-App's suggest.py with two edits" (commit `ce66e50`). Memories hook is "ported from Beta-OLD's user_prompt_submit hook" (commit `4cd4a9b`).
-- **protoalpha** — the dev/testbed Claude Code project. End-to-end verifications happen "through Claude Code on protoalpha". (`13fcb2c`, `ca6cf59`, `eb98278`)
+- **protobeta** — the dev/testbed Claude Code project. End-to-end verifications happen "through Claude Code on protobeta". (`13fcb2c`, `ca6cf59`, `eb98278`)
 - **workshop** — Jeffery's machine; the container host. "Trust boundary is the host (workshop VM)." (`e9e606c`)
-- **alpha-DB** — separate DB host reachable on the tailnet. (`c221875`)
+- **beta-DB** — separate DB host reachable on the tailnet. (`c221875`)
 - **Bifrost** — the LLM gateway. "preserves Bifrost's structured JSON error body verbatim" (`8b72a88`); chat + embedding calls routed through it (`d66e85e`).
 - **Pondside / Pondsiders** — the umbrella ecosystem of related repos: `Pondsiders/Beta-dotclaude` (Claude Code settings), `/Pondside/.claude/rules/python.md` (shared rules). (`f7085d1`, `4cd4a9b`, `ca6cf59`)
 
@@ -19,8 +19,8 @@ Concepts: FastAPI factory, FastMCP, pgvector, schema discipline.
 
 - `3a880f0` initial commit — empty
 - `ba3881c` project stub
-- `13fcb2c` First end-to-end working alpha-server: FastAPI app, Cortex MCP at `/cortex/mcp`, bearer-token auth, `/livez`, lifespan hand-off composing FastMCP's session manager with FastAPI's. Five fields in Settings: `database_url`, `timezone`, `auth_token`. asyncpg pool, pgvector registered against `extensions` schema, `search_path=public, extensions` as a startup parameter (not SET, because SET gets wiped on connection reset).
-- `acc6222` Tiny fix: MCP `serverInfo` was leaking FastMCP's own version. `importlib.metadata.version("alpha-server")` makes `pyproject.toml` the single source of truth.
+- `13fcb2c` First end-to-end working beta-server: FastAPI app, Cortex MCP at `/cortex/mcp`, bearer-token auth, `/livez`, lifespan hand-off composing FastMCP's session manager with FastAPI's. Five fields in Settings: `database_url`, `timezone`, `auth_token`. asyncpg pool, pgvector registered against `extensions` schema, `search_path=public, extensions` as a startup parameter (not SET, because SET gets wiped on connection reset).
+- `acc6222` Tiny fix: MCP `serverInfo` was leaking FastMCP's own version. `importlib.metadata.version("beta-server")` makes `pyproject.toml` the single source of truth.
 
 ## Narrative 2 — Cortex tool surface (diary + memories)
 
@@ -61,7 +61,7 @@ Concepts: shared `APIRouter`, side-effect registration mirroring the MCP tool pa
 
 - `ca6cf59` `/hooks/timestamp` lands. Same commit refactors: the per-file `APIRouter` pattern from `memories.py` was "the right shape for one hook and the wrong shape for the four-plus we now know we're going to have." Single shared `APIRouter` in `hooks/__init__.py`; side-effect imports in `app.py` trigger registration. **Mechanism-side consistency with `cortex/__init__.py`.** Same commit adds `clock.elapsed(earlier, later)` as a sibling to `clock.age(dt)`.
 
-- `ce66e50` `/hooks/reflection` — the **novel piece**. Stop hooks don't use `additionalContext`; they return `{"decision": "block", "reason": <text>}` which keeps the turn from ending AND feeds `reason` to the model as the instruction to continue. Fires on turns 1, 4, 7, 10, ... via atomic Redis `INCR`. Short-circuits on `stop_hook_active=true` to avoid the 8-block runaway-override path. **Reminder text framed as "between turns": the model is told this reminder is from alpha-server, not from Jeffery, and not to reference it in the eventual reply.**
+- `ce66e50` `/hooks/reflection` — the **novel piece**. Stop hooks don't use `additionalContext`; they return `{"decision": "block", "reason": <text>}` which keeps the turn from ending AND feeds `reason` to the model as the instruction to continue. Fires on turns 1, 4, 7, 10, ... via atomic Redis `INCR`. Short-circuits on `stop_hook_active=true` to avoid the 8-block runaway-override path. **Reminder text framed as "between turns": the model is told this reminder is from beta-server, not from Jeffery, and not to reference it in the eventual reply.**
 
 ## Narrative 5 — Auth & trust boundary
 
@@ -77,9 +77,9 @@ Concepts: bearer-token, prompt-injection threat model, MCP-spec Origin validatio
 
 Concepts: Dockerfile two-stage uv sync, `.dockerignore`, compose overrides.
 
-- `c221875` Big architectural pivot ("from this morning's Mr-Bones chalkboard, memory #17598"): host-process-behind-Tailscale-sidecar → containerized on Workshop with `127.0.0.1:8000` port mapping. Container reaches Postgres+Redis on alpha-DB over tailnet from inside Workshop.
-- `df39a4b` `.dockerignore` + uv cache mount. The `COPY of alpha-server/` was clobbering the container's built venv with the host's 299MB `.venv` (timed: 9.3s → 1.0s → 3.4s after fix).
-- `79a56c1` Per-checkout compose overrides (`compose.override.yml.example` tracked; the real `compose.override.yml` gitignored). One workshop checkout can run dev mode on port 8001 with project name `alpha-dev`; production stays on `:8000`.
+- `c221875` Big architectural pivot ("from this morning's Mr-Bones chalkboard, memory #17598"): host-process-behind-Tailscale-sidecar → containerized on Workshop with `127.0.0.1:8000` port mapping. Container reaches Postgres+Redis on beta-DB over tailnet from inside Workshop.
+- `df39a4b` `.dockerignore` + uv cache mount. The `COPY of beta-server/` was clobbering the container's built venv with the host's 299MB `.venv` (timed: 9.3s → 1.0s → 3.4s after fix).
+- `79a56c1` Per-checkout compose overrides (`compose.override.yml.example` tracked; the real `compose.override.yml` gitignored). One workshop checkout can run dev mode on port 8001 with project name `beta-dev`; production stays on `:8000`.
 
 ## Narrative 7 — Utils MCP server
 

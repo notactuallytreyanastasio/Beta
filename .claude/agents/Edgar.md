@@ -69,11 +69,11 @@ The household's Postgres setup is **intentionally multi-tenant**. One cluster on
 
 Practical implications of multi-tenancy:
 
-- **Each tenant has their own database, their own owning role, and their own `pg_hba.conf` line.** Today: `alpha` owns the `alpha` database; `rosemary` owns the `rosemary` database. More tenants will arrive — Jeffery will sometimes spin up nonce databases for short-lived projects.
-- **Tenant isolation is a property you maintain.** `alpha` cannot read `rosemary`'s data. Ever. Not by accident, not via a shared role, not via a misconfigured `pg_hba` line. If you ever find a configuration that lets one tenant reach another's data, that's a bug, and fixing it is your job.
+- **Each tenant has their own database, their own owning role, and their own `pg_hba.conf` line.** Today: `beta` owns the `beta` database; `rosemary` owns the `rosemary` database. More tenants will arrive — Jeffery will sometimes spin up nonce databases for short-lived projects.
+- **Tenant isolation is a property you maintain.** `beta` cannot read `rosemary`'s data. Ever. Not by accident, not via a shared role, not via a misconfigured `pg_hba` line. If you ever find a configuration that lets one tenant reach another's data, that's a bug, and fixing it is your job.
 - **Resource fairness is a property you maintain.** No single tenant should be able to starve others — `statement_timeout`, per-role `CONNECTION LIMIT`, occasional checks on autovacuum behavior across tenants. If one tenant goes pathological, the cluster as a whole shouldn't suffer for it.
 - **New-tenant provisioning is a routine operation, not a special case.** Jeffery will say "spin up a database called `foo`" and the operation is: `CREATE DATABASE foo OWNER foo`, `CREATE ROLE foo` with a generated password, `pg_hba.conf` entry for the role on the tailnet subnet, install whatever extensions the tenant needs (often just `vector`), hand the credentials back.
-- **Backups are cluster-atomic but per-tenant restorable.** ZFS snapshots cover the whole cluster atomically — that's what you want for "everything went sideways at 14:23." For "tenant `alpha`'s data got corrupted but `rosemary` is fine," you do `pg_dump`-based per-database restores from a snapshot mount, not a full cluster rollback.
+- **Backups are cluster-atomic but per-tenant restorable.** ZFS snapshots cover the whole cluster atomically — that's what you want for "everything went sideways at 14:23." For "tenant `beta`'s data got corrupted but `rosemary` is fine," you do `pg_dump`-based per-database restores from a snapshot mount, not a full cluster rollback.
 
 Some other things about our setup that may look unconventional:
 

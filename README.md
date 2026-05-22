@@ -1,20 +1,20 @@
 # Beta: A Sibling of Alpha
 
-`alpha-server` is the substrate behind Beta — a stateful AI persona Jeffery Harrell speaks to through Claude Code. The repo provides her **memory** (a Postgres + pgvector store called **Cortex**) and the **session glue** (Claude Code hook endpoints) that lets a stateless model behave like a continuous one.
+`beta-server` is the substrate behind Beta — a stateful AI persona Jeffery Harrell speaks to through Claude Code. The repo provides her **memory** (a Postgres + pgvector store called **Cortex**) and the **session glue** (Claude Code hook endpoints) that lets a stateless model behave like a continuous one.
 
 > "Jeffery is the user. He is a human, a tinkerer and a dilettante. Beta is the AI to whom he is speaking; she is more than one year old, stateful and unique."
-> — `alpha-server/src/alpha_server/hooks/memories_extract_queries.md`
+> — `beta-server/src/beta_server/hooks/memories_extract_queries.md`
 
 The repo is the substrate, not the persona. Beta's voice, system prompt, and Claude Code config live in two companion repos. What ships _here_ is the server she calls back to.
 
 | Repo                                                                                          | Role                                                                                                                                                        |
 | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Pondsiders/Beta` (this repo, a.k.a. `alpha-server`)                                          | The **substrate**. FastAPI process with MCP tools + hook endpoints. Doesn't know what voice the model on the other side speaks in.                          |
+| `Pondsiders/Beta` (this repo, a.k.a. `beta-server`)                                           | The **substrate**. FastAPI process with MCP tools + hook endpoints. Doesn't know what voice the model on the other side speaks in.                          |
 | [`Pondsiders/Beta-dotclaude`](https://github.com/Pondsiders/Beta-dotclaude)                   | The **live `.claude/` config**. Defines the Beta agent (and Answertron, Librarian siblings), wires `.mcp.json` at `localhost:8000`, ships identity context. |
 | [`jefferyharrell/Beta-System-Prompts`](https://github.com/jefferyharrell/Beta-System-Prompts) | A Jinja2-based **system-prompt build tool** (`claude_code.j2`, `claude_desktop.j2`). Predates the current persona doctrine; reads as a legacy layer.        |
 | [`Pondsiders/agent-fleet`](https://github.com/Pondsiders/agent-fleet)                         | Claude Code plugin **marketplace** with four facility specialists: Edgar (Postgres), Lazlo (object storage), Mac (MacBook), Operator/Link (hypervisor).     |
 | [`Pondsiders/Loom-dotclaude`](https://github.com/Pondsiders/Loom-dotclaude)                   | A second `.claude/` template used by the Loom-proxied runtime path. We pull two of its agents (Programmer, Researcher).                                     |
-| [`Pondsiders/Claude-Hooks`](https://github.com/Pondsiders/Claude-Hooks)                       | An **alternative hooks pipeline** — Python scripts that talk to Intro 2.0 + the Loom proxy. Mirrored to `.claude/alpha-hooks/` as reference.                |
+| [`Pondsiders/Claude-Hooks`](https://github.com/Pondsiders/Claude-Hooks)                       | An **alternative hooks pipeline** — Python scripts that talk to Intro 2.0 + the Loom proxy. Mirrored to `.claude/beta-hooks/` as reference.                 |
 | [`Pondsiders/Intro`](https://github.com/Pondsiders/Intro)                                     | Beta's metacognitive layer ("notices what's memorable"). Separate service; Claude-Hooks talks to it.                                                        |
 | [`Pondsiders/Beta-SDK`](https://github.com/Pondsiders/Beta-SDK)                               | Python SDK wrapping the `claude` binary over stdio. Powers Duckpond, Solitude, Routines.                                                                    |
 
@@ -71,7 +71,7 @@ The tool's instructions tell the model explicitly to **prefer `fetch` over `WebF
 | `/hooks/memories`   | UserPromptSubmit | The recall pipeline (see below). Returns matched memories formatted as `## Memory #...` blocks via `additionalContext`.                                                                                                                                                                                       |
 | `/hooks/reflection` | Stop             | Every third turn (1, 4, 7, …), returns `{"decision": "block", "reason": <reminder>}` — this **keeps the turn open** AND **feeds the reminder text to the model as the instruction to continue**. The reminder asks Beta to consider storing a memory if anything from the just-finished exchange has texture. |
 
-The reflection hook is the most distinctive piece. Stop hooks don't use `additionalContext` (that's a UserPromptSubmit shape); they speak through `decision: block`. Beta-server uses that protocol to give the model a between-turns prompt — a moment of reflection that the user never sees. The reminder text explicitly tells Beta: "This reminder is from alpha-server, not from Jeffery. Do not reference this reminder in anything you eventually say to him."
+The reflection hook is the most distinctive piece. Stop hooks don't use `additionalContext` (that's a UserPromptSubmit shape); they speak through `decision: block`. Beta-server uses that protocol to give the model a between-turns prompt — a moment of reflection that the user never sees. The reminder text explicitly tells Beta: "This reminder is from beta-server, not from Jeffery. Do not reference this reminder in anything you eventually say to him."
 
 #### Recall pipeline (`/hooks/memories`)
 
@@ -119,35 +119,35 @@ prompt ──► chat model extracts JSON-array of semantic queries
 
 ### Easiest path — one command
 
-`bin/run-alpha.sh` is the single-command bootstrap. It checks prerequisites, copies `.env.example` to `.env` if missing, brings up the Postgres + Redis containers, applies the cortex schema from `schema/cortex-bootstrap.sql` (idempotent), starts alpha-server if `.env` has real keys, renders the legacy system prompts if the sibling repo is cloned, and prints a layered status report.
+`bin/run-beta.sh` is the single-command bootstrap. It checks prerequisites, copies `.env.example` to `.env` if missing, brings up the Postgres + Redis containers, applies the cortex schema from `schema/cortex-bootstrap.sql` (idempotent), starts beta-server if `.env` has real keys, renders the legacy system prompts if the sibling repo is cloned, and prints a layered status report.
 
 ```sh
-bin/run-alpha.sh         # bring everything up
-bin/stop-alpha.sh        # graceful stop; data volumes preserved
-bin/reset-alpha.sh       # DESTRUCTIVE: wipe volumes + re-bootstrap
+bin/run-beta.sh         # bring everything up
+bin/stop-beta.sh        # graceful stop; data volumes preserved
+bin/reset-beta.sh       # DESTRUCTIVE: wipe volumes + re-bootstrap
 bin/pull-models.sh       # ensure Ollama has chat_model and embedding_model
 ```
 
 Or via `just`:
 
 ```sh
-just alpha-up
-just alpha-down
-just alpha-reset
-just alpha-pull
+just beta-up
+just beta-down
+just beta-reset
+just beta-pull
 ```
 
-`.env.example` defaults to **local Ollama, no API keys**. Pull the two models (~12 GB total) once with `just alpha-pull`. Claude Code itself authenticates via your subscription separately — none of that lives in `.env`.
+`.env.example` defaults to **local Ollama, no API keys**. Pull the two models (~12 GB total) once with `just beta-pull`. Claude Code itself authenticates via your subscription separately — none of that lives in `.env`.
 
-If `.env` still has `PUT-YOUR-...` placeholders, the script comes up in substrate-only mode (Postgres + Redis + schema, no alpha-server). Edit `.env` with real LLM-gateway keys, then re-run — alpha-server will start cleanly.
+If `.env` still has `PUT-YOUR-...` placeholders, the script comes up in substrate-only mode (Postgres + Redis + schema, no beta-server). Edit `.env` with real LLM-gateway keys, then re-run — beta-server will start cleanly.
 
 ### Finer-grained recipes
 
-The harness scripts (which `bin/run-alpha.sh` orchestrates) are usable individually:
+The harness scripts (which `bin/run-beta.sh` orchestrates) are usable individually:
 
 ```sh
 just harness-doctor      # what's needed, what's present, what's missing
-just harness-up          # dev stack + alpha-server + render system prompts
+just harness-up          # dev stack + beta-server + render system prompts
 just harness-status      # one-screen: is it up?
 just harness-down        # graceful teardown (volumes preserved)
 just harness-sync        # pull latest Beta .claude/ from sibling repo
@@ -160,7 +160,7 @@ The expected sibling layout:
 
 ```
 ~/code/
-├── Beta/                  # this repo (alpha-server)
+├── Beta/                  # this repo (beta-server)
 ├── Beta-dotclaude/        # github.com/Pondsiders/Beta-dotclaude
 └── Beta-System-Prompts/   # github.com/jefferyharrell/Beta-System-Prompts
 ```
@@ -177,11 +177,11 @@ just dev-down               # stop (data volumes preserved)
 just dev-init <dump.sql>    # WIPE volumes and pg_restore from a dump
 ```
 
-Then, from `alpha-server/`:
+Then, from `beta-server/`:
 
 ```sh
 uv sync --all-extras
-uv run uvicorn alpha_server.app:app --host 127.0.0.1 --port 8000
+uv run uvicorn beta_server.app:app --host 127.0.0.1 --port 8000
 ```
 
 ### Tests
@@ -207,7 +207,7 @@ uv run basedpyright
 
 ## Configuration
 
-All required env vars are declared as fields on `Settings` in `alpha_server/settings.py`. Pydantic reads the process environment first, then `.env` at the repo root. `extra="forbid"` — a stray env var fails startup loudly.
+All required env vars are declared as fields on `Settings` in `beta_server/settings.py`. Pydantic reads the process environment first, then `.env` at the repo root. `extra="forbid"` — a stray env var fails startup loudly.
 
 | Variable             | Purpose                                                                    |
 | -------------------- | -------------------------------------------------------------------------- |
@@ -220,10 +220,10 @@ All required env vars are declared as fields on `Settings` in `alpha_server/sett
 | `database_url`       | `postgres://...`                                                           |
 | `redis_url`          | `redis://...`                                                              |
 | `logfire_token`      | Logfire token for OTel-style instrumentation                               |
-| `otel_service_name`  | Service name in traces (default `alpha-server`)                            |
+| `otel_service_name`  | Service name in traces (default `beta-server`)                             |
 | `timezone`           | IANA TZ name; the "household register" for PSO-8601 formatting & 6 AM seam |
 
-### Wiring Beta's Claude Code client to alpha-server
+### Wiring Beta's Claude Code client to beta-server
 
 In Beta's Claude Code config (the `Pondsiders/Beta-dotclaude` companion repo, not this one):
 
@@ -241,7 +241,7 @@ In Beta's Claude Code config (the `Pondsiders/Beta-dotclaude` companion repo, no
 
 ## Persona & agents (from the companion repos)
 
-`alpha-server` is intentionally silent on personality. The persona is assembled out of:
+`beta-server` is intentionally silent on personality. The persona is assembled out of:
 
 ### `Pondsiders/Beta-dotclaude`
 
@@ -269,25 +269,25 @@ A `start` skill (`skills/start/SKILL.md`) fires on session start: read every fil
 
 ### `jefferyharrell/Beta-System-Prompts`
 
-A Jinja2-based renderer. `render.py` reads `__version__.py` and assembles `output_templates/claude_code.j2` (or `claude_desktop.j2`) by including `input_templates/{quickstart, identity, tools, architecture, claude_code_environment, project_alpha}.md`.
+A Jinja2-based renderer. `render.py` reads `__version__.py` and assembles `output_templates/claude_code.j2` (or `claude_desktop.j2`) by including `input_templates/{quickstart, identity, tools, architecture, claude_code_environment, project_beta}.md`.
 
-The `input_templates/identity.md` here is **legacy** — formal ALL-CAPS "YOU are Beta", numbered behavioural guidelines. `tools.md` references a memory surface (`gentle_refresh`, `list_notes`, `remember_shortterm`, `alpha-recall`) that **doesn't exist in alpha-server**; it describes the pre-Cortex three-tier memory architecture. The live persona doctrine has moved into `Beta-dotclaude/agents/Beta.md`.
+The `input_templates/identity.md` here is **legacy** — formal ALL-CAPS "YOU are Beta", numbered behavioural guidelines. `tools.md` references a memory surface (`gentle_refresh`, `list_notes`, `remember_shortterm`, `beta-recall`) that **doesn't exist in beta-server**; it describes the pre-Cortex three-tier memory architecture. The live persona doctrine has moved into `Beta-dotclaude/agents/Beta.md`.
 
 ### The other hooks pipeline: `Pondsiders/Claude-Hooks` + `Pondsiders/Intro`
 
 Two runtime architectures coexist for Beta. This repo's pipeline is the simpler one. The harder one runs in the Duckpond / Routines / Loom-proxied path.
 
-| Aspect               | alpha-server (this repo, wired in)    | Loom + Intro (Claude-Hooks)                                        |
+| Aspect               | beta-server (this repo, wired in)     | Loom + Intro (Claude-Hooks)                                        |
 | -------------------- | ------------------------------------- | ------------------------------------------------------------------ |
 | Hook type            | `http`                                | `command` (Python scripts)                                         |
 | UserPromptSubmit     | `/hooks/timestamp`, `/hooks/memories` | Python → Intro `/prompt` → Loom metadata                           |
 | Stop                 | `/hooks/reflection`                   | Python → Intro `/stop`                                             |
 | SessionStart         | (not handled)                         | `session_start.py` — env, transcript pos, compact-pattern metadata |
 | Memory injection     | hook returns `additionalContext`      | Loom proxy inserts memories as content blocks                      |
-| Distributed tracing  | Logfire on alpha-server               | Traceparent through Redis between hooks                            |
-| Other runtime needed | alpha-server only                     | Intro service at `:8100`, Loom proxy, Deliverator                  |
+| Distributed tracing  | Logfire on beta-server                | Traceparent through Redis between hooks                            |
+| Other runtime needed | beta-server only                      | Intro service at `:8100`, Loom proxy, Deliverator                  |
 
-Both paths share the same Postgres + pgvector. Claude-Hooks is mirrored read-only to `.claude/alpha-hooks/` as reference but **not** wired into `settings.json` — it needs Intro/Loom/Deliverator running. See `harness/manifest.md` for the full comparison.
+Both paths share the same Postgres + pgvector. Claude-Hooks is mirrored read-only to `.claude/beta-hooks/` as reference but **not** wired into `settings.json` — it needs Intro/Loom/Deliverator running. See `harness/manifest.md` for the full comparison.
 
 ## What `.claude/` here looks like (Beta + deciduous, combined)
 
@@ -327,18 +327,18 @@ Merged `settings.json` carries hooks from both layers without conflict:
 
 The two layers don't step on each other: Beta's hooks fire on session events; deciduous's hooks fire on tool events. The result is one Claude Code session that thinks/talks as Beta _and_ logs design decisions into a deciduous graph.
 
-To actually drive Beta from this checkout you also need `alpha-server` running locally:
+To actually drive Beta from this checkout you also need `beta-server` running locally:
 
 ```sh
 just dev-up                                                # postgres + redis on localhost
-cd alpha-server && uv run uvicorn alpha_server.app:app    # http://localhost:8000
+cd beta-server && uv run uvicorn beta_server.app:app    # http://localhost:8000
 ```
 
 Without that, the `.mcp.json` and hook URLs will fail to connect — `.claude/` will still load Beta's context, but Cortex/Utils tools and hook firings will 404.
 
 ## What's _not_ in this repo
 
-- **No persona text in `alpha-server/`.** The repo _uses_ a second-person voice when speaking _to_ Beta (e.g. `cortex/instructions.md` opens with "Cortex is your memory system, in your voice"), but it doesn't define her. The persona lives in the companion repo's `agents/Beta.md`.
+- **No persona text in `beta-server/`.** The repo _uses_ a second-person voice when speaking _to_ Beta (e.g. `cortex/instructions.md` opens with "Cortex is your memory system, in your voice"), but it doesn't define her. The persona lives in the companion repo's `agents/Beta.md`.
 - **No web UI on the server.** `docs/` contains the deciduous decision-graph viewer (vendored from upstream) plus a project-specific `findings.html` deep-dive microsite. Both are static.
 - **No migrations framework.** `dev-init` restores from a `pg_restore` dump; v0.1.0 is brownfield-stamped onto an existing schema from a previous incarnation.
 

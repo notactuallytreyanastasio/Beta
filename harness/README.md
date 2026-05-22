@@ -20,7 +20,7 @@ A small set of shell scripts that bring up Beta + deciduous side by side from on
     │ http://localhost:8000                                            │
     ▼                                                                  │
 ┌──────────────────────────────┐                                       │
-│ alpha-server (uvicorn)       │                                       │
+│ beta-server (uvicorn)       │                                       │
 │   /cortex/mcp, /utils/mcp    │                                       │
 │   /hooks/{timestamp,         │                                       │
 │           memories,          │                                       │
@@ -45,11 +45,11 @@ The harness's job is to make sure every box is up and to fail informatively when
 | `just` recipe    | What it does                                                                                                                                                                                                                                                                                       |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `harness-doctor` | Pre-flight check. Reports prerequisites (`docker`, `uv`, `just`, `deciduous`, `curl`), sibling repo presence, local `.claude/` integration state, `.env` keys, deciduous DB, and any running services. Read-only.                                                                                  |
-| `harness-status` | One-screen "is it up?" — five layers: config / deciduous / dev stack / alpha-server / rendered prompts. Read-only.                                                                                                                                                                                 |
-| `harness-up`     | Idempotent startup. Bring up dev stack → optionally start alpha-server (if `.env` is complete) → render system prompts (if Beta-System-Prompts is present) → status.                                                                                                                               |
-| `harness-down`   | Graceful teardown. Stops alpha-server (PID file), then dev stack. Data volumes preserved.                                                                                                                                                                                                          |
+| `harness-status` | One-screen "is it up?" — five layers: config / deciduous / dev stack / beta-server / rendered prompts. Read-only.                                                                                                                                                                                  |
+| `harness-up`     | Idempotent startup. Bring up dev stack → optionally start beta-server (if `.env` is complete) → render system prompts (if Beta-System-Prompts is present) → status.                                                                                                                                |
+| `harness-down`   | Graceful teardown. Stops beta-server (PID file), then dev stack. Data volumes preserved.                                                                                                                                                                                                           |
 | `harness-sync`   | Pull the latest Beta-owned `.claude/` payload (agents, context, rules, start skill, `.mcp.json`) from the sibling `../Beta-dotclaude` checkout into here. Preserves deciduous's `commands/`, `hooks/`, `skills/`. Reports if `settings.json`'s merge is missing any of the five expected sections. |
-| `server-up`      | Start just alpha-server in the background (assumes dev stack already up). PID in `harness/alpha-server.pid`.                                                                                                                                                                                       |
+| `server-up`      | Start just beta-server in the background (assumes dev stack already up). PID in `harness/beta-server.pid`.                                                                                                                                                                                         |
 | `prompt-render`  | Run `Beta-System-Prompts/render.py` to produce `docs/system-prompts/claude_code.md` and `claude_desktop.md`.                                                                                                                                                                                       |
 
 ## Sibling-repo expectations
@@ -58,7 +58,7 @@ The harness assumes both companion repos are cloned beside `Beta/`:
 
 ```
 ~/code/
-├── Beta/                       # this repo (alpha-server)
+├── Beta/                       # this repo (beta-server)
 ├── Beta-dotclaude/             # github.com/Pondsiders/Beta-dotclaude
 └── Beta-System-Prompts/        # github.com/jefferyharrell/Beta-System-Prompts
 ```
@@ -67,7 +67,7 @@ If they aren't present, `harness-doctor` says so and `harness-sync` / `prompt-re
 
 ## Degraded modes
 
-- **No `.env`**: `harness-up` brings the dev stack up but skips alpha-server. Cortex/Utils tools and hook URLs return 404. Useful for working on `.claude/` config without needing the full backend.
+- **No `.env`**: `harness-up` brings the dev stack up but skips beta-server. Cortex/Utils tools and hook URLs return 404. Useful for working on `.claude/` config without needing the full backend.
 - **`.env` incomplete**: same as above. `harness-doctor` lists exactly which keys are missing.
 - **No `Beta-System-Prompts/`**: prompt rendering is skipped. The live persona doctrine is in `.claude/agents/Beta.md` regardless — the Beta-System-Prompts repo is the legacy layer.
 - **No `Beta-dotclaude/`**: `harness-sync` is unavailable. The integrated `.claude/` already in this checkout still works; you just can't pull updates.
@@ -108,11 +108,11 @@ The `.deciduous/` directory in this repo holds the decision-graph DB. Created on
 
 ### Layer 3 — dev stack
 
-`compose-dev.yml` at the repo root brings up `pgvector/pgvector:pg17` on 5432 and `redis:8-alpine` on 6379. Volumes `alpha-dev-pgdata` and `alpha-dev-redis` persist across restarts.
+`compose-dev.yml` at the repo root brings up `pgvector/pgvector:pg17` on 5432 and `redis:8-alpine` on 6379. Volumes `beta-dev-pgdata` and `beta-dev-redis` persist across restarts.
 
-### Layer 4 — alpha-server
+### Layer 4 — beta-server
 
-`uv run uvicorn alpha_server.app:app --host 127.0.0.1 --port 8000` from inside `alpha-server/`. The harness backgrounds it and writes the PID to `harness/alpha-server.pid` for clean shutdown.
+`uv run uvicorn beta_server.app:app --host 127.0.0.1 --port 8000` from inside `beta-server/`. The harness backgrounds it and writes the PID to `harness/beta-server.pid` for clean shutdown.
 
 ### Layer 5 — system prompts (rendered)
 
@@ -122,6 +122,6 @@ The `.deciduous/` directory in this repo holds the decision-graph DB. Created on
 
 The name follows Beta's own usage. From `agents/Beta.md`:
 
-> **Workshop** is where you run today. It's a VM on Primer that hosts Claude Code (your harness) and alpha-server (the Docker container with your MCP tools and hooks). [...] If Workshop gets trashed — by an experiment, by a mistake, by anything — the fix is _spin up a replacement VM and clone the repo again._ You lose no data. Workshop is the disposable surface.
+> **Workshop** is where you run today. It's a VM on Primer that hosts Claude Code (your harness) and beta-server (the Docker container with your MCP tools and hooks). [...] If Workshop gets trashed — by an experiment, by a mistake, by anything — the fix is _spin up a replacement VM and clone the repo again._ You lose no data. Workshop is the disposable surface.
 
 The harness is the disposable surface: the stuff that brings up the runtime around the model. Workshop in the wild; this directory on your laptop.

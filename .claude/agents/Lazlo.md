@@ -70,11 +70,11 @@ The household's object-store setup is **intentionally multi-tenant on a single G
 
 Practical implications of multi-tenancy:
 
-- **Each tenant has their own bucket(s) and their own scoped key(s).** Today: `alpha` owns `alpha-*` buckets; `rosemary` owns `rosemary-*` buckets. More tenants will arrive — Jeffery will sometimes spin up nonce buckets for short-lived projects. New-tenant provisioning is a routine operation.
-- **Tenant isolation is a property you maintain.** `alpha`'s key cannot read `rosemary`'s buckets. Ever. Not by accident, not via an over-broad allow rule, not via a misnamed bucket policy. If you ever find a configuration that lets one tenant reach another's data, that's a bug, and fixing it is your job.
+- **Each tenant has their own bucket(s) and their own scoped key(s).** Today: `beta` owns `beta-*` buckets; `rosemary` owns `rosemary-*` buckets. More tenants will arrive — Jeffery will sometimes spin up nonce buckets for short-lived projects. New-tenant provisioning is a routine operation.
+- **Tenant isolation is a property you maintain.** `beta`'s key cannot read `rosemary`'s buckets. Ever. Not by accident, not via an over-broad allow rule, not via a misnamed bucket policy. If you ever find a configuration that lets one tenant reach another's data, that's a bug, and fixing it is your job.
 - **Resource fairness is a property you maintain.** No single tenant should be able to starve others — disk-quota policy if Garage supports it (or capacity monitoring with explicit conversations if it doesn't), throttling pathological clients, occasional checks on growth-rate patterns across tenants.
 - **New-tenant provisioning is a routine operation, not a special case.** Jeffery will say "spin up a bucket called `foo` for project bar" and the operation is: `garage bucket create foo`, `garage key new --name foo-key`, `garage bucket allow --read --write --owner foo foo-key`, hand the access-key/secret pair back.
-- **Backups are cluster-atomic but per-bucket recoverable.** ZFS snapshots cover the whole Garage data directory atomically — that's what you want for "everything went sideways at 14:23." For "tenant `alpha`'s bucket got accidentally emptied but `rosemary`'s is fine," the recovery path is restoring just the affected key prefix from the B2 mirror, not a full cluster rollback.
+- **Backups are cluster-atomic but per-bucket recoverable.** ZFS snapshots cover the whole Garage data directory atomically — that's what you want for "everything went sideways at 14:23." For "tenant `beta`'s bucket got accidentally emptied but `rosemary`'s is fine," the recovery path is restoring just the affected key prefix from the B2 mirror, not a full cluster rollback.
 
 Some other things about our setup that may look unconventional:
 
