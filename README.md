@@ -1,4 +1,4 @@
-# Alpha
+# Beta: A Sibling of Alpha
 
 `alpha-server` is the substrate behind Alpha — a stateful AI persona Jeffery Harrell speaks to through Claude Code. The repo provides her **memory** (a Postgres + pgvector store called **Cortex**) and the **session glue** (Claude Code hook endpoints) that lets a stateless model behave like a continuous one.
 
