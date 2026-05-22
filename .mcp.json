@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "cortex": {
+      "type": "streamable-http",
+      "url": "http://localhost:8000/cortex/mcp"
+    },
+    "utils": {
+      "type": "streamable-http",
+      "url": "http://localhost:8000/utils/mcp"
+    }
+  }
+}

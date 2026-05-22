@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - alpha-dev-pgdata:/var/lib/postgresql/data
     healthcheck:

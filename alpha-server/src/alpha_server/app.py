@@ -56,24 +56,28 @@ def _scrubbing_callback(match: logfire.ScrubMatch) -> str | None:
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Open long-lived per-request state and compose the mounted MCP lifespans.
+    Born once at startup, lives eor the process lifetime:
+       - redis client (seen-cache for the memories hook)
 
-    Born once at startup, lives for the process lifetime:
-    - redis client (seen-cache for the memories hook)
+       The MCP session managers also need to start before requests arrive at
+       the mounted sub-apps; without this hand-off, mounted tool calls hang.
+       `AsyncExitStack` composes each sub-app's lifespan so adding another
+       mounted MCP server is a single `enter_async_context` line.
 
-    The MCP session managers also need to start before requests arrive at
-    the mounted sub-apps; without this hand-off, mounted tool calls hang.
-    `AsyncExitStack` composes each sub-app's lifespan so adding another
-    mounted MCP server is a single `enter_async_context` line.
-
-    LLM clients and the database pool are lazy module-level singletons
-    (see `llm.py` and `db.py`); they don't need lifespan involvement.
+       LLM clients and the database pool are lazy module-level singletons
+       (see `llm.py` and `db.py`); they don't need lifespan involvement.
     """
     settings = get_settings()
 
+    # send_to_logfire="if-token-present" lets local-dev runs with an empty
+    # logfire_token start cleanly — no token, no backend send. Same pattern
+    # the sibling Claude-Hooks repo uses. With a real token, behavior is
+    # unchanged: spans flow to Logfire as before.
     _ = logfire.configure(
-        token=settings.logfire_token,
+        token=settings.logfire_token or None,
         service_name=settings.otel_service_name,
         scrubbing=logfire.ScrubbingOptions(callback=_scrubbing_callback),
+        send_to_logfire="if-token-present",
     )
     _ = logfire.instrument_fastapi(app)
     logfire.instrument_httpx()

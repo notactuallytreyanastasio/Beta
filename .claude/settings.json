@@ -1,0 +1,69 @@
+{
+  "agent": "Alpha",
+  "env": {
+    "ENABLE_TOOL_SEARCH": "false",
+    "MAX_MCP_OUTPUT_TOKENS": 100000
+  },
+  "showThinkingSummaries": true,
+  "autoMemoryEnabled": false,
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://localhost:8000/hooks/timestamp"
+          },
+          {
+            "type": "http",
+            "url": "http://localhost:8000/hooks/memories"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "http://localhost:8000/hooks/reflection"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/require-action-node.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/version-check.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/post-commit-reminder.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
