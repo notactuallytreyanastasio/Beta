@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bobby's Alpha Fork</title>
+<style>
+  :root {
+    --bg: #f7f3ea;
+    --panel: #fbf8f1;
+    --ink: #2a2723;
+    --soft: #5a5447;
+    --rule: #ddd3bf;
+    --accent: #7d8b6a;
+    --accent-warm: #b35a3c;
+    --content-width: 700px;
+  }
+  *,*::before,*::after { box-sizing: border-box; }
+  html { font-size: 17px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  nav.top-nav {
+    background: var(--ink);
+    padding: 0.6rem 1.5rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  nav.top-nav .brand {
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  nav.top-nav a {
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+    margin-left: 1.5rem;
+    transition: color 0.15s;
+  }
+  nav.top-nav a:hover { color: #fff; }
+  nav.top-nav a.highlight {
+    color: var(--accent-warm);
+    border-bottom: 1px solid rgba(179,90,60,0.4);
+  }
+  nav.top-nav a.highlight:hover { color: #e06940; }
+  .wrap {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+  }
+  h1, h2, h3 {
+    font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    line-height: 1.2;
+    font-weight: 600;
+  }
+  h1 { font-size: 2.2rem; margin: 0 0 1rem; }
+  h2 { font-size: 1.3rem; margin: 2rem 0 0.8rem; }
+  p { margin: 0 0 1.1rem; }
+  a { color: var(--accent-warm); text-decoration: none; border-bottom: 1px solid rgba(179,90,60,0.35); }
+  a:hover { border-bottom-color: var(--accent-warm); }
+  code {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: #f1ecdf;
+    padding: 0.05em 0.32em;
+    border-radius: 2px;
+  }
+  .hero {
+    text-align: center;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 2.5rem;
+  }
+  .hero .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  .hero .subtitle {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.88rem;
+    color: var(--soft);
+    margin-top: 0.5rem;
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  @media (max-width: 600px) { .card-grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.2rem;
+  }
+  .card h3 {
+    font-size: 0.95rem;
+    margin: 0 0 0.4rem;
+    color: var(--accent-warm);
+  }
+  .card p {
+    font-size: 0.88rem;
+    margin: 0;
+    color: var(--soft);
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.45;
+  }
+  .status {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.82rem;
+    color: var(--soft);
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+  }
+  .status .badge {
+    display: inline-block;
+    background: rgba(125,139,106,0.15);
+    color: #5a6e4a;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-right: 0.5rem;
+  }
+  footer {
+    text-align: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.82rem;
+    color: var(--soft);
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+  }
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <span class="brand">Bobby's Alpha Fork</span>
+  <div>
+    <a href="for-jeffery.html" class="highlight">To Alpha's Creator &rarr;</a>
+    <a href="deciduous-viewer.html">Decision Graph</a>
+    <a href="findings.html">Findings</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<div class="hero">
+  <div class="emoji">&#x1F9E0;</div>
+  <h1>Building My Own Duck</h1>
+  <p class="subtitle">A multi-project AI entity with memory, personality, and a tape archive</p>
+</div>
+
+<p>This is Bobby Grayson's fork of the <a href="https://github.com/Pondsiders/Alpha">Alpha</a> substrate &mdash; the FastAPI server that gives a Claude-powered AI persistence across sessions through durable memory, automatic recall, and between-turns reflection.</p>
+
+<p>The goal isn't to copy Alpha. It's to build something shaped differently: a <strong>coding-first AI orchestrator</strong> that sits above all my projects, remembers where I left off, matches my energy, and gets my references.</p>
+
+<h2>What I'm building</h2>
+
+<div class="card-grid">
+  <div class="card">
+    <h3>Multi-project memory</h3>
+    <p>A central nervous system that knows about all ~100 repos, their status, what tech they use, and where I left off on each one.</p>
+  </div>
+  <div class="card">
+    <h3>Archive classification</h3>
+    <p>1,344 rare music videos from the markpines Archive.org collection. Local models for transcription (mlx-whisper) and frame classification on my M4 Pro.</p>
+  </div>
+  <div class="card">
+    <h3>Personality layer</h3>
+    <p>Not a helpful assistant. A coding partner who stacks weird references, gets the xkcd deep cuts, and fires back at 2 AM.</p>
+  </div>
+  <div class="card">
+    <h3>Life planning</h3>
+    <p>What's active, what's blocked, what connects to what, what I said I'd get back to. Project management alongside the code.</p>
+  </div>
+</div>
+
+<h2>The foundation</h2>
+
+<p>Alpha's architecture provides the base: a Postgres + pgvector memory store, a seven-step recall pipeline that surfaces relevant memories before each turn, and a reflection hook that creates private thinking time between turns. I've got this running locally &mdash; Postgres on port 5433, llama-server for Qwen 3 embeddings, the whole pipeline verified end-to-end.</p>
+
+<p>What I'm adding on top: a project registry, multi-repo awareness, and a persona document written for my brain instead of Jeffery's.</p>
+
+<h2>The tools</h2>
+
+<p>Built with <a href="https://github.com/robertgrayson/deciduous">deciduous</a> (my decision-graph CLI), Claude Code, and whatever local models fit in 24GB of unified memory. The decision graph for this repo has <strong>93 nodes</strong> documenting every architectural choice from the initial fork through the full running system.</p>
+
+<div class="status">
+  <span class="badge">IN PROGRESS</span> Running locally. Recall pipeline verified. Next: persona document + multi-project registry.
+</div>
+
+<footer>
+  <p>"There is a horse in aisle five." &middot; <a href="https://bobbby.online">bobbby.online</a></p>
+</footer>
+
+</div>
+</body>
+</html>
